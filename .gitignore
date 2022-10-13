@@ -1,0 +1,6 @@
+data/
+.ipynb_checkpoints
+.localized
+log/
+trash/
+analysis/
