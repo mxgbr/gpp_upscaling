@@ -383,32 +383,6 @@ class Experiment(object):
         
         evaluation.to_csv(path)
 
-class BaseModel(object):
-    def __init__(self):
-        self.model = None
-        self.id = None
-        # self.save = None
-
-    def preproc(self, df, y_col, strat):
-        '''Placeholder for model-specific pre-processing
-        
-        Can be used, e.g., if NaNs need to be filled
-        '''
-        return df, strat
-
-    def fit(self, X, y, oof_idx=None):
-        '''Fits the model
-        
-        Attributes:
-            X: Dataframe with predictor variables
-            y: Series with GT values
-            oof_idx: Index groups, can be used by the model for cv tuning. Enables stratified and grouped train/val splits, e.g., with PredefinedSplit.
-        '''
-        pass
-
-    def predict(self, X):
-        pass
-
 class CV(object):
     '''Runs CV on model'''
     def __init__(self, model, n_folds_cv=5, n_folds_tuning=5, random_state=2, use_ray=True, num_cpus=None):
