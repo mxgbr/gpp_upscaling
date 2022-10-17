@@ -4,6 +4,9 @@ class BaseModel(object):
     Attributes:
         model: Instance of the trained model
         id (int): Unique identifier
+
+    TODO:
+        save and load functions?
     '''
     def __init__(self):
         self.model = None
