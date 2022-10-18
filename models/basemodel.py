@@ -1,3 +1,6 @@
+import pickle
+import os
+
 class BaseModel(object):
     '''The BaseModel object contains the basic structure for models in the CV
     
@@ -54,10 +57,12 @@ class BaseModel(object):
     def save(self, path):
         '''Saves the model
 
+        Pickles by default, should be overwritten if custom saving methods applied
+
         Args:
-            path (str): Saving location
+            path (str): Saving directory
         '''
-        with open(path, 'ab') as outfile:
+        with open(os.path.join(path, 'model'), 'ab') as outfile:
             pickle.dump(self.model, outfile)
 
     @staticmethod
@@ -65,11 +70,10 @@ class BaseModel(object):
         '''Loads a model
 
         Args:
-            path (str): Loading location
+            path (str): Loading directory
 
         Returns:
             model object
         '''
-        model = pickle.load(open(path, 'rb'))
-        self.model = model
+        model = pickle.load(open(os.path.join(path, 'model'), 'rb'))
         return model
