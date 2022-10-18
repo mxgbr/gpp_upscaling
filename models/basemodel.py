@@ -14,7 +14,7 @@ class BaseModel(object):
     def __init__(self):
         self.model = None
         self.id = None
-        # self.save = None
+        self.from_file = False
 
     def preproc(self, df, y_col, strat):
         '''Placeholder for model-specific pre-processing
@@ -65,15 +65,23 @@ class BaseModel(object):
         with open(os.path.join(path, 'model'), 'ab') as outfile:
             pickle.dump(self.model, outfile)
 
-    @staticmethod
-    def load(path):
+    @classmethod
+    def load(cls, path, **params):
         '''Loads a model
+
+        Model loaded is of type BaseModel with default attributes and the loaded model in the model attribute
 
         Args:
             path (str): Loading directory
+            **params: Parameters for model initialization
 
         Returns:
-            model object
+            BaseModel object
         '''
         model = pickle.load(open(os.path.join(path, 'model'), 'rb'))
-        return model
+
+        model_wrapper = cls(**params)
+        model_wrapper.model = model
+        model_wrapper.from_file = True
+
+        return model_wrapper
