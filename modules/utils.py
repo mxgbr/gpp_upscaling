@@ -23,6 +23,48 @@ PFT_REPLACEMENTS = pd.DataFrame({
     'Site': ['ENF', 'EBF', 'DNF', 'DBF', 'MF', 'CSH', 'OSH', 'WSA', 'SAV', 'GRA', 'WET', 'CRO', 'URB', 'CVM', 'SNO', 'BSV', 'WAT'],   
 })
 
+def preprocess(df, var_set, cat=[], target=None):
+    '''Performs standardized preprocessing tasks
+
+    Selects variable sets, creates categorical dummy variables
+
+    Args:
+        df (pd.DataFrame): Data with variables as columns
+        var_set (str): Indentifier of variable set, or list of column names
+        cat (list): List of names of categorical variables
+        target (str): Column name of target variable, or list of column names
+
+    Returns:
+        df_out: Data frame of selected variables
+        cat_orig: Categorical columns without One-Hot encoding
+    '''
+    if target is not None:
+        target = df[target].copy()
+
+    df_out = df.copy()
+
+    if type(setting) is list:
+        df_out = df_out[setting]
+
+    elif setting == 'rs_min':
+        # see https://daac.ornl.gov/VEGETATION/guides/FluxSat_GPP_FPAR.html
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR']] 
+
+    # One-Hot Encoding
+    for category in cat_orig.columns:
+        ohc = OneHotEncoder(sparse=False)
+        X_cat = ohc.fit_transform(df_out[category].values.reshape(-1, 1))
+        df_out = df_out.drop(category, axis=1)
+        data_ohc = pd.DataFrame(np.array(X_cat), index=df_out.index, columns=[category + '_' + str(name) for name in ohc.categories_[0]])
+        if np.nan in data_ohc.columns:
+            data_ohc = data_ohc.drop(np.nan, axis=1)
+        df_out = pd.concat([df_out, data_ohc], axis=1)
+
+    if target is not None:
+        df_out = df_out.merge(target, left_index=True, right_index=True)
+
+    return df_out
+
 def select_vars(df, setting, gpp=None, strat=None):
     '''selects different predictors for different experiment set-ups'''
     
@@ -74,7 +116,7 @@ def select_vars(df, setting, gpp=None, strat=None):
 
         cat.append('MODIS_LC')
 
-    elif setting == 'joiner_7b+PAR':
+    elif setting == 'rs_min':
         # see https://daac.ornl.gov/VEGETATION/guides/FluxSat_GPP_FPAR.html
         df_out = df[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR']]
 
@@ -116,6 +158,7 @@ def select_vars(df, setting, gpp=None, strat=None):
         df_out = pd.concat([df_out, data_ohc], axis=1)
 
     # drop nans (where all x nan or y nan)
+    ## TODO should not be necessary
     nan_mask_x = df_out.drop('GPP', axis=1).notna().any(axis=1)
     nan_mask_y = df_out['GPP'].notna()
     df_out = df_out[nan_mask_x & nan_mask_y]
@@ -159,6 +202,9 @@ class Experiment(object):
             print('--------------------------------------------')
             print('Logging ', self.exp_id)
 
+        self.start = dt.datetime.now()
+        print('Initialized:', self.start.strftime("%Y:%m:%d %H:%M:%S"))
+
     def _create_folder(self):
         '''Creates the experiment folder'''
         os.makedirs(self.path, exist_ok=True)
@@ -182,7 +228,10 @@ class Experiment(object):
         TODO:
             How save train_idx, test_idx?
         '''
-        
+        end = dt.datetime.now()
+        print('Saved: ', end.strftime("%Y:%m:%d %H:%M:%S"))
+        print('Duration: ', (end - self.start).total_seconds(), 's')
+
         # create experiment folder
         self._create_folder()
 
