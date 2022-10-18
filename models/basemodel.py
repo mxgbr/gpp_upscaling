@@ -50,3 +50,26 @@ class BaseModel(object):
             X (pd.DataFrame): Frame in same structure as for fitting
         '''
         pass
+
+    def save(self, path):
+        '''Saves the model
+
+        Args:
+            path (str): Saving location
+        '''
+        with open(path, 'ab') as outfile:
+            pickle.dump(self.model, outfile)
+
+    @staticmethod
+    def load(path):
+        '''Loads a model
+
+        Args:
+            path (str): Loading location
+
+        Returns:
+            model object
+        '''
+        model = pickle.load(open(path, 'rb'))
+        self.model = model
+        return model
