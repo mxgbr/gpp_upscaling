@@ -149,11 +149,13 @@ class Experiment(object):
             exp_id = dt.datetime.now().strftime("%Y%m%d%H%M%S") + suffix
         self.exp_id = exp_id
         self.path = os.path.join(output_dir, self.exp_id)
+        print(self.path)
 
         # logging
         self.orig_stdout = sys.stdout
         self.stdout = None
         if logging == True:
+            self._create_folder()
             self.stdout = open(os.path.join(path, 'log.txt'), 'a')
             sys.stdout = self.stdout
             print('--------------------------------------------')
@@ -164,7 +166,7 @@ class Experiment(object):
         os.mkdir(self.path, exist_ok=True)
 
     def save(self, folds, X=None, y=None, params=None, models=None, train_idx=None, test_idx=None, y_pred=None, end_logging=True):
-        '''Saves models and ouputs'
+        '''Saves models and ouputs
         
         Saves the model results in the output folder
         
@@ -280,206 +282,6 @@ class Experiment(object):
             msg (str): Message
         '''
         pass
-
-class Experiment(object):
-    def __init__(self, path=None, output_dir='output/', logging=False, desc='', suffix=''):
-        '''Initializes experiment
-        
-        If path is empty, a new dir is created for the experiment with current time stamp
-        '''
-        if path is None:
-            self.time_id = dt.datetime.now().strftime("%d%m%Y-%H%M%S") + suffix
-            path = os.path.join(output_dir, self.time_id)
-            os.mkdir(path)
-            print('Created experiment directory ' + path)
-            self._append_summary_file(os.path.join(output_dir, 'experiments.csv'), [desc, 'STARTED'], ['Description', 'Status'])
-        else:
-            self.time_id = os.path.basename(os.path.normpath(path))
-            print('Working in existing directory ' + path)
-
-        self.path = path
-        ## TODO desc empty of working in existing directory
-        self.desc = desc
-        self.output_dir = output_dir
-        self.time_id = self.time_id
-
-        self.orig_stdout = sys.stdout
-        self.stdout = None
-        if logging == True:
-            self.stdout = open(os.path.join(path, 'log.txt'), 'a')
-            sys.stdout = self.stdout
-            print('--------------------------------------------')
-            print('Logging ', self.time_id)
-
-    def save(self, y, X=None, runs=[], params=None, end_logging=True, save_func=None):
-        '''Saves models, parameters, and metrics'''
-
-        # save predictors (if available)
-        if X is not None:
-            X.to_csv(os.path.join(self.path, 'X.csv'))
-
-        # save GPP measurements
-        y.to_csv(os.path.join(self.path, 'y.csv'))
-        
-        # save parameters if available
-        if params is not None:
-            with open(os.path.join(self.path, 'parameters.txt'), 'w') as f:
-                print(params, file=f)
-
-        if (end_logging == True) & (self.stdout is not None):
-            sys.stdout = self.orig_stdout
-            self.stdout.close()
-
-        # save runs
-        for idx, run in enumerate(runs):
-            dir = os.path.join(self.path, 'run_' + str(idx))
-            
-            if not os.path.isdir(dir):
-                os.mkdir(dir)
-
-            # save training indices for X and y
-            if 'train_idx' in run:
-                np.save(os.path.join(dir, 'train_idx'), run['train_idx'])
-
-            # save test indices for X and y; if not available use all
-            if 'test_idx' in run:
-                np.save(os.path.join(dir, 'test_idx'), run['test_idx'])
-            else:
-                np.save(os.path.join(dir, 'test_idx'), np.arange(0, len(y)))
-
-            # save model prediction (corresponding to test_idx)
-            if 'pred' in run:
-                np.save(os.path.join(dir, 'pred'), run['pred'])
-
-            # save model as pickle or with custom model save function (with parameters model, path)
-            if 'model' in run:
-                if run['model'] is not None:
-                    if save_func is None:
-                        with open(os.path.join(dir, 'model'), 'ab') as outfile:
-                            pickle.dump(run['model'], outfile)
-                    else:
-                        save_func(run['model'], dir)
-
-        if self.desc == '':
-            desc = np.nan
-        else:
-            desc = self.desc
-        self._append_summary_file(os.path.join(self.output_dir, 'experiments.csv'), [desc, 'COMPLETE'], ['Description', 'Status'])
-
-        # output_path=os.path.join(self.output_dir, 'experiments.csv')
-        # experiments = pd.DataFrame({'id': [os.path.basename(os.path.normpath(self.path))], 'desc': [self.desc], 'saved': [dt.datetime.now().strftime("%d%m%Y-%H%M%S")]})
-        # experiments.to_csv(output_path, mode='a', header=not os.path.exists(output_path))
-
-        # print('Saved to ', self.path)
-
-    def load(self, concat=True):
-        '''Loads all predictions and returns data frame with GT and prediction'''
-        y = pd.read_csv(os.path.join(self.path, 'y.csv'), index_col=[0, 1], parse_dates=True).squeeze()
-
-        runs = glob.glob(os.path.join(self.path, 'run_*'))
-
-        y_eval = []
-        for ii in runs:
-            test_idx = np.load(os.path.join(ii, 'test_idx.npy'))
-            y_test = y.iloc[test_idx]
-            y_pred = np.load(os.path.join(ii, 'pred.npy'))
-            y_eval.append(pd.DataFrame({'Pred': y_pred.flatten(), 'GT': y_test}, index=y.iloc[test_idx].index))
-
-        if concat == True:
-            y_eval = pd.concat(y_eval)
-
-        return y_eval
-
-    def remove(self):
-        try:
-            shutil.rmtree(self.path)
-
-            # rm from experiments
-            path = os.path.join(self.output_dir, 'experiments.csv')
-            exp = pd.read_csv(path, index_col=0, parse_dates=True).drop(self.time_id, errors='ignore')
-            exp.to_csv(path)
-
-            # rm from evaluation
-            path = os.path.join(self.output_dir, 'evaluation.csv')
-            exp = pd.read_csv(path, index_col=0, parse_dates=True).drop(self.time_id, errors='ignore')
-            exp.to_csv(path)
-
-        except OSError as e:
-            print("Error: %s - %s." % (e.filename, e.strerror))
-
-    def evaluate(self, filter=None, min_months=2):
-        '''Creates evaluation charts and statistics'''
-        
-        y_eval = self.load()
-
-        # filter min months
-        y_eval = y_eval[(y_eval.GT.groupby('SITE_ID').transform(lambda x: x.groupby('SITE_ID').transform(lambda x: x.count())) >= min_months)]
-
-        path = os.path.join(self.path, 'evaluation')
-        if not os.path.isdir(path):
-            os.mkdir(path)
-
-        # create temporal analysis
-        fig = evaluation_plot(y_eval)
-        fig.savefig(os.path.join(path, 'evaluation_temp.jpg'))
-
-        # create analysis on Biome/Climate level
-
-        # Log analysis
-        r2 = sklearn.metrics.r2_score(y_eval.GT.values, y_eval.Pred.values)
-        rmse = sklearn.metrics.mean_squared_error(y_eval.GT.values, y_eval.Pred.values, squared=False)
-
-        self._append_summary_file(os.path.join(self.output_dir, 'evaluation.csv'), [self.desc, r2, rmse], ['Description', 'R2', 'RMSE'])
-
-        # evaluation = pd.DataFrame({'ID': [self.time_id], 'Description': [self.desc], 'R2': [r2], 'RMSE': [rmse], 'Date': [dt.datetime.now().strftime("%d%m%Y-%H%M%S")]}).set_index('ID')
-        # if os.path.isfile(os.path.join(self.output_dir, 'evaluation.csv')):
-        #     evaluation = evaluation.combine_first(pd.read_csv(os.path.join(self.output_dir, 'evaluation.csv'), index_col=0, parse_dates=True))
-        
-        # evaluation.to_csv(os.path.join(self.output_dir, 'evaluation.csv'))
-    
-    def evaluate_each(self):
-        y_eval = self.load(concat=False)
-
-        r2 = []
-        rmse = []
-        for ii in y_eval:
-            r2.append(sklearn.metrics.r2_score(ii.GT.values, ii.Pred.values))
-            rmse.append(sklearn.metrics.mean_squared_error(ii.GT.values, ii.Pred.values, squared=False))
-
-        return r2, rmse
-
-    def evaluate_stats(self, min_months=24):
-
-        y_eval = self.load()
-
-        # filter min months
-        y_eval = y_eval[(y_eval.GT.groupby('SITE_ID').transform(lambda x: x.groupby('SITE_ID').transform(lambda x: x.count())) >= min_months)]
-
-        return {
-            'r2_overall': sklearn.metrics.r2_score(y_eval.GT.values, y_eval.Pred.values),
-            'r2_trend': sklearn.metrics.r2_score(across_site_trend(y_eval.GT).values, across_site_trend(y_eval.Pred).values),
-            'r2_sites': sklearn.metrics.r2_score(across_site_variability(y_eval.GT).values, across_site_variability(y_eval.Pred).values),
-            'r2_msc': sklearn.metrics.r2_score(msc(y_eval.GT).values, msc(y_eval.Pred).values),
-            'r2_iav': sklearn.metrics.r2_score(iav(y_eval.GT).values, iav(y_eval.Pred).values)
-        }
-
-    def log(self, msg):
-        '''Logs message to log file'''
-        with open(os.path.join(self.path, 'log.txt'), 'a') as f:
-            f.write(msg)
-
-    def _append_summary_file(self, path, data, columns):
-        '''data can use nan to keep previous records'''
-        # TODO does appending work correctly?
-
-        data = [self.time_id] + data + [dt.datetime.now().strftime("%d.%m.%Y %H:%M:%S")]
-        columns = ['ID'] + columns + ['Save Date']
-
-        evaluation = pd.DataFrame([data], columns=columns).set_index('ID')
-        if os.path.isfile(path):
-            evaluation = evaluation.combine_first(pd.read_csv(path, index_col=0, parse_dates=True))
-        
-        evaluation.to_csv(path)
 
 def eval_sensitivity(runs, y, random_state, min_months=24, cols={}, exp_name='', idx=None):
     # calc metrics r2 and rmse
