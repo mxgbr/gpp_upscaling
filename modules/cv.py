@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import sklearn
 
 import random
@@ -93,6 +94,9 @@ class CV(object):
 
         Returns:
             Dictionary with keys model, train_idx, test_idx, pred, metrics
+
+        TODO:
+            implement non-stratification
         '''
         # train and test sets
         X_train = X.iloc[train_idx]
@@ -118,6 +122,9 @@ class CV(object):
 
         # evaluation
         metrics = [sklearn.metrics.r2_score(y_test, y_pred), sklearn.metrics.mean_squared_error(y_test, y_pred, squared=False)]
+
+        # y_pred to series
+        y_pred = pd.Series(y_pred, index=X_test.index, name='y_pred')
 
         # save
         return_dict = {

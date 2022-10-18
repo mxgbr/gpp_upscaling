@@ -12,12 +12,10 @@ import os
 import datetime as dt
 import pickle
 import glob
-import shutil
 import copy
 from collections import Counter, defaultdict
 import random
-
-from models.basemodel import BaseModel
+import csv
 
 PFT_REPLACEMENTS = pd.DataFrame({
     'MODIS': np.arange(1, 18),
@@ -163,7 +161,7 @@ class Experiment(object):
 
     def _create_folder(self):
         '''Creates the experiment folder'''
-        os.mkdir(self.path, exist_ok=True)
+        os.makedirs(self.path, exist_ok=True)
 
     def save(self, folds, X=None, y=None, params=None, models=None, train_idx=None, test_idx=None, y_pred=None, end_logging=True):
         '''Saves models and ouputs
@@ -210,14 +208,14 @@ class Experiment(object):
 
             # save indices
             if train_idx is not None:
-                train_idx[idx].to_csv(os.path.join(dir, 'train_idx'))
+                pd.Series(train_idx[idx], name='idx').to_csv(os.path.join(dir, 'train_idx.csv'), index=False)
 
             if test_idx is not None:
-                test_idx[idx].to_csv(os.path.join(dir, 'test_idx'))
+                pd.Series(test_idx[idx], name='idx').to_csv(os.path.join(dir, 'test_idx.csv'), index=False)
 
             # save predictions
-            if pred is not None:
-                pred[idx].to_csv(os.path.join(dir, 'y_pred'))
+            if y_pred is not None:
+                y_pred[idx].to_csv(os.path.join(dir, 'y_pred.csv'))
 
             # save model
             if models is not None:
@@ -231,14 +229,19 @@ class Experiment(object):
             y (pd.Series): Target variables
             params (dict): Parameters
             models (list): List of trained models (instances of BaseModel)
-            train_idx (list): List of pd.Series with training indices
-            test_idx (list): List of pd.Series with test indices
+            train_idx (list): List of lists with training indices
+            test_idx (list): List of lists with test indices
             y_pred (list): List of pd.Series of predictions
         '''
-        folds = glob.glob(os.path.join(self.path, 'fold_*'))
+        folds = len(glob.glob(os.path.join(self.path, 'fold_*')))
 
-        X = y = params = None
-        models = train_idx = test_idx = y_pred = []
+        X = None
+        y = None
+        params = None
+        models = []
+        train_idx = [] 
+        test_idx = []
+        y_pred = []
         
         # open X
         if os.path.isfile(os.path.join(self.path, 'X.csv')):
@@ -253,21 +256,21 @@ class Experiment(object):
             with open(os.path.join(self.path, 'params.txt'),'r') as inf:
                 params = eval(inf.read())
 
-        for idx in folds:
+        for idx in range(folds):
             # open models
             ## TODO
 
             # open train_idx
-            if os.path.isfile(os.path.join(self.path, 'fold_' + idx, 'train_idx.csv')):
-                train_idx.append(pd.read_csv(os.path.join(self.path, 'fold_' + idx, 'train_idx.csv')))
+            if os.path.isfile(os.path.join(self.path, 'fold_' + str(idx), 'train_idx.csv')):
+                train_idx.append(pd.read_csv(os.path.join(self.path, 'fold_' + str(idx), 'train_idx.csv')).squeeze().to_list())
 
             # open test_idx
-            if os.path.isfile(os.path.join(self.path, 'fold_' + idx, 'test_idx.csv')):
-                test_idx.append(pd.read_csv(os.path.join(self.path, 'fold_' + idx, 'test_idx.csv')))
+            if os.path.isfile(os.path.join(self.path, 'fold_' + str(idx), 'test_idx.csv')):
+                test_idx.append(pd.read_csv(os.path.join(self.path, 'fold_' + str(idx), 'test_idx.csv')).squeeze().to_list())
 
             # open y_pred
-            if os.path.isfile(os.path.join(self.path, 'fold_' + idx, 'y_pred.csv')):
-                y_pred.append(pd.read_csv(os.path.join(self.path, 'fold_' + idx, 'y_pred.csv'), index_col=[0, 1], parse_dates=True).squeeze())
+            if os.path.isfile(os.path.join(self.path, 'fold_' + str(idx), 'y_pred.csv')):
+                y_pred.append(pd.read_csv(os.path.join(self.path, 'fold_' + str(idx), 'y_pred.csv'), index_col=[0, 1], parse_dates=True).squeeze())
 
         return X, y, params, models, train_idx, test_idx, y_pred
 
