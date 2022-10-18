@@ -4,10 +4,10 @@ from models.basemodel import BaseModel
 
 class RandomForestCV(BaseModel):
     def __init__(self, 
-                 n_estimators=200, 
-                 max_depth=15, 
-                 min_samples_leaf=5, 
-                 min_samples_split=12, 
+                 n_estimators=[200], 
+                 max_depth=[15], 
+                 min_samples_leaf=[5], 
+                 min_samples_split=[12], 
                  n_iter=5, 
                  max_features=15,
                  scoring='neg_root_mean_squared_error'
