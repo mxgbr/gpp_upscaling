@@ -17,6 +17,8 @@ import copy
 from collections import Counter, defaultdict
 import random
 
+from models.basemodel import BaseModel
+
 PFT_REPLACEMENTS = pd.DataFrame({
     'MODIS': np.arange(1, 18),
     'New': ['ENF', 'EBF', 'DNF', 'DBF', 'MF', 'SH', 'SH', 'SAV', 'SAV', 'GRA', 'WET', 'CRO', 'URB', 'CVM', 'SNO', 'BSV', 'WAT'],
@@ -125,6 +127,159 @@ def select_vars(df, setting, gpp=None, strat=None):
         strat = strat.loc[strat.index.intersection(df_out.index)]
 
     return df_out, strat
+
+class Experiment(object):
+    '''Organizes and logs model training and evaluation
+
+    Experiments are identifiable by their ID, consisting of YYYYMMDDHHMMSS when the experiment was started
+
+    Attributes:
+        path (str): Path to experiment folder
+        output_dir (str): Location where experiments are stored
+        logging (bool): Indicator if logging should be captured in a file
+    '''
+
+    def __init__(self, exp_id=None, output_dir='experiments/', logging=False, suffix=None):
+        if suffix is not None:
+            suffix = '_' + suffix
+        else:
+            suffix = ''
+
+        if exp_id is None:
+            exp_id = dt.datetime.now().strftime("%Y%m%d%H%M%S") + suffix
+        self.exp_id = exp_id
+        self.path = os.path.join(output_dir, self.exp_id)
+
+        # logging
+        self.orig_stdout = sys.stdout
+        self.stdout = None
+        if logging == True:
+            self.stdout = open(os.path.join(path, 'log.txt'), 'a')
+            sys.stdout = self.stdout
+            print('--------------------------------------------')
+            print('Logging ', self.exp_id)
+
+    def _create_folder(self):
+        '''Creates the experiment folder'''
+        os.mkdir(self.path, exist_ok=True)
+
+    def save(self, folds, X=None, y=None, params=None, models=None, train_idx=None, test_idx=None, y_pred=None, end_logging=True):
+        '''Saves models and ouputs'
+        
+        Saves the model results in the output folder
+        
+        Args:
+            folds (int): Number of folds to be saved
+            X (pd.DataFrame): Explanatory variables
+            y (pd.Series): Target variables
+            params (dict): Parameters
+            models (list): List of trained models (instances of BaseModel)
+            train_idx (list): List of pd.Series with training indices
+            test_idx (list): List of pd.Series with test indices
+            y_pred (list): List of pd.Series of predictions
+            end_logging (bool): Indicator if logging should be reset to sys.stdout
+
+        TODO:
+            How save train_idx, test_idx?
+        '''
+        
+        # create experiment folder
+        self._create_folder()
+
+        # save training data
+        if X is not None:
+            X.to_csv(os.path.join(self.path, 'X.csv'))
+
+        if y is not None:
+            y.to_csv(os.path.join(self.path, 'y.csv'))
+
+        # save parameter file
+        if params is not None:
+            with open(os.path.join(self.path, 'parameters.txt'), 'w') as f:
+                print(params, file=f)
+
+        # save each cv fold
+        for idx in range(folds):
+
+            # create fold folder
+            dir = os.path.join(self.path, 'fold_' + str(idx))
+            if not os.path.isdir(dir):
+                os.mkdir(dir)
+
+            # save indices
+            if train_idx is not None:
+                train_idx[idx].to_csv(os.path.join(dir, 'train_idx'))
+
+            if test_idx is not None:
+                test_idx[idx].to_csv(os.path.join(dir, 'test_idx'))
+
+            # save predictions
+            if pred is not None:
+                pred[idx].to_csv(os.path.join(dir, 'y_pred'))
+
+            # save model
+            if models is not None:
+                models[idx].save(dir)
+
+    def load(self):
+        '''Loads models and ouptuts
+        
+        Returns:
+            X (pd.DataFrame): Explanatory variables
+            y (pd.Series): Target variables
+            params (dict): Parameters
+            models (list): List of trained models (instances of BaseModel)
+            train_idx (list): List of pd.Series with training indices
+            test_idx (list): List of pd.Series with test indices
+            y_pred (list): List of pd.Series of predictions
+        '''
+        folds = glob.glob(os.path.join(self.path, 'fold_*'))
+
+        X = y = params = None
+        models = train_idx = test_idx = y_pred = []
+        
+        # open X
+        if os.path.isfile(os.path.join(self.path, 'X.csv')):
+            X = pd.read_csv(os.path.join(self.path, 'X.csv'), index_col=[0, 1], parse_dates=True)
+
+        # open y
+        if os.path.isfile(os.path.join(self.path, 'y.csv')):
+            y = pd.read_csv(os.path.join(self.path, 'y.csv'), index_col=[0, 1], parse_dates=True).squeeze()
+
+        # open params
+        if os.path.isfile(os.path.join(self.path, 'params.txt')):
+            with open(os.path.join(self.path, 'params.txt'),'r') as inf:
+                params = eval(inf.read())
+
+        for idx in folds:
+            # open models
+            ## TODO
+
+            # open train_idx
+            if os.path.isfile(os.path.join(self.path, 'fold_' + idx, 'train_idx.csv')):
+                train_idx.append(pd.read_csv(os.path.join(self.path, 'fold_' + idx, 'train_idx.csv')))
+
+            # open test_idx
+            if os.path.isfile(os.path.join(self.path, 'fold_' + idx, 'test_idx.csv')):
+                test_idx.append(pd.read_csv(os.path.join(self.path, 'fold_' + idx, 'test_idx.csv')))
+
+            # open y_pred
+            if os.path.isfile(os.path.join(self.path, 'fold_' + idx, 'y_pred.csv')):
+                y_pred.append(pd.read_csv(os.path.join(self.path, 'fold_' + idx, 'y_pred.csv'), index_col=[0, 1], parse_dates=True).squeeze())
+
+        return X, y, params, models, train_idx, test_idx, y_pred
+
+    def remove(self):
+        '''Removes experiment'''
+        pass
+
+    def log(self, msg):
+        '''Logs message
+        
+        Args:
+            msg (str): Message
+        '''
+        pass
 
 class Experiment(object):
     def __init__(self, path=None, output_dir='output/', logging=False, desc='', suffix=''):
