@@ -22,8 +22,8 @@ if __name__ == "__main__":
     params = params.params
 
     # random state, change with array id to make splits different but reproducible
-    if array_job:
-        params['random_state'] = params['random_state'] + array_id
+    if array_job & (params['random_state'] is not None):
+        params['random_state'] = params['random_state'] + int(array_id)
 
     # select model
     if params['model'] == 'random_forest':
