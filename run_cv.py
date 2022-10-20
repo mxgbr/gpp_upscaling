@@ -83,6 +83,8 @@ if __name__ == "__main__":
 
     runs = {k: [dic[k] for dic in runs] for k in runs[0]}
 
+    print(runs['metrics'])
+
     # save results
     exp.save(len(runs), X=X, y=y, params=params, models=runs['model'], train_idx=runs['train_idx'], test_idx=runs['test_idx'], y_pred=runs['pred'])
 
