@@ -23,7 +23,7 @@ PFT_REPLACEMENTS = pd.DataFrame({
     'Site': ['ENF', 'EBF', 'DNF', 'DBF', 'MF', 'CSH', 'OSH', 'WSA', 'SAV', 'GRA', 'WET', 'CRO', 'URB', 'CVM', 'SNO', 'BSV', 'WAT'],   
 })
 
-def preprocess(df, var_set, cat=[], target=None):
+def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
     '''Performs standardized preprocessing tasks
 
     Selects variable sets, creates categorical dummy variables
@@ -33,37 +33,49 @@ def preprocess(df, var_set, cat=[], target=None):
         var_set (str): Indentifier of variable set, or list of column names
         cat (list): List of names of categorical variables
         target (str): Column name of target variable, or list of column names
+        rm_all_nans (bool): Indicator if rows with all nans should be removed
 
     Returns:
         df_out: Data frame of selected variables
-        cat_orig: Categorical columns without One-Hot encoding
     '''
     if target is not None:
         target = df[target].copy()
 
     df_out = df.copy()
 
-    if type(setting) is list:
+    if type(var_set) is list:
         df_out = df_out[setting]
 
-    elif setting == 'rs_min':
+    elif var_set == 'rs_min':
         # see https://daac.ornl.gov/VEGETATION/guides/FluxSat_GPP_FPAR.html
         df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR']] 
 
+    elif var_set == 'rs':
+        df_out = df[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
+                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm']]
+        cat.append('MODIS_LC')
+
     # One-Hot Encoding
-    for category in cat_orig.columns:
+    cat_dfs = []
+    for category in list(set(df_out.columns) & set(cat)):
         ohc = OneHotEncoder(sparse=False)
         X_cat = ohc.fit_transform(df_out[category].values.reshape(-1, 1))
         df_out = df_out.drop(category, axis=1)
         data_ohc = pd.DataFrame(np.array(X_cat), index=df_out.index, columns=[category + '_' + str(name) for name in ohc.categories_[0]])
         if np.nan in data_ohc.columns:
             data_ohc = data_ohc.drop(np.nan, axis=1)
-        df_out = pd.concat([df_out, data_ohc], axis=1)
+        cat_dfs.append(data_ohc)
+
+    df_out = pd.concat([df_out] + cat_dfs, axis=1)
+
+    # remove all nans
+    if rm_all_nans:
+        df_out = df_out[df_out.notna().any(axis=1)]
 
     if target is not None:
-        df_out = df_out.merge(target, left_index=True, right_index=True)
+        target = target.loc[df_out.index]
 
-    return df_out
+    return df_out, target
 
 def select_vars(df, setting, gpp=None, strat=None):
     '''selects different predictors for different experiment set-ups'''
@@ -195,10 +207,13 @@ class Experiment(object):
         # logging
         self.orig_stdout = sys.stdout
         self.stdout = None
+        self.orig_stderr = sys.stderr
+
         if logging == True:
             self._create_folder()
-            self.stdout = open(os.path.join(path, 'log.txt'), 'a')
+            self.stdout = open(os.path.join(self.path, 'log.txt'), 'a')
             sys.stdout = self.stdout
+            sys.stderr = self.stdout
             print('--------------------------------------------')
             print('Logging ', self.exp_id)
 
@@ -269,6 +284,11 @@ class Experiment(object):
             # save model
             if models is not None:
                 models[idx].save(dir)
+
+        if (end_logging == True) & (self.stdout is not None):
+            sys.stdout = self.orig_stdout
+            sys.stderr = self.orig_stderr
+            self.stdout.close()
 
     def load(self):
         '''Loads models and ouptuts
