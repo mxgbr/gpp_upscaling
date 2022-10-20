@@ -10,7 +10,8 @@ class RandomForestCV(BaseModel):
                  min_samples_split=[12], 
                  n_iter=5, 
                  max_features=15,
-                 scoring='neg_root_mean_squared_error'
+                 scoring='neg_root_mean_squared_error',
+                 n_cpus=None
                 ):
         
         super().__init__()
@@ -21,10 +22,11 @@ class RandomForestCV(BaseModel):
         self.n_iter = n_iter
         self.max_features = max_features
         self.scoring = scoring
+        self.n_cpus = n_cpus
 
     def fit(self, X, y, oof_idx=None):
         self.max_features = min(self.max_features, X.shape[1])
-        model = RandomForestRegressor(max_features=self.max_features)
+        model = RandomForestRegressor(max_features=self.max_features, n_jobs=self.n_cpus)
 
         self.model = RandomizedSearchCV(model, 
                                    param_distributions={

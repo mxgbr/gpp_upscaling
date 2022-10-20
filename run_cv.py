@@ -77,8 +77,7 @@ if __name__ == "__main__":
     cv = CV(model, 
                 n_folds_cv=params['n_folds_cv'], 
                 n_folds_tuning=params['n_folds_tuning'],
-                random_state=params['random_state'],
-                n_cpus=params['n_cpus'])
+                random_state=params['random_state'])
 
     runs, X, y = cv.run(data_sel, y_var, strat)
 

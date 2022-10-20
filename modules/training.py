@@ -72,12 +72,10 @@ class Trainer(object):
         model (object): Model
         n_folds_tuning (int): Number of folds for internal CV (training)
         random_state (int): Random state
-        n_cpus (int): Number of CPUs
     '''
-    def __init__(self, model, n_folds_tuning=5, random_state=None, n_cpus=None):
+    def __init__(self, model, n_folds_tuning=5, random_state=None):
         self.model = model
         self.n_folds_tuning = n_folds_tuning
-        self.n_cpus = n_cpus
         self.random_state = random_state
 
     def fit(self, X, y, train_idx, groups, strat=None):
@@ -162,10 +160,9 @@ class CV(Trainer):
         n_folds_cv (int): Number of CV folds (evaluation)
         n_folds_tuning (int): Number of folds for internal CV (training)
         random_state (int): Random state
-        n_cpus (int): Number of CPUs
     '''
-    def __init__(self, model, n_folds_cv=5, n_folds_tuning=5, random_state=None, n_cpus=None):
-        super().__init__(model, n_folds_tuning=n_folds_tuning, random_state=random_state, n_cpus=n_cpus)
+    def __init__(self, model, n_folds_cv=5, n_folds_tuning=5, random_state=None):
+        super().__init__(model, n_folds_tuning=n_folds_tuning, random_state=random_state)
         self.n_folds_cv = n_folds_cv
 
     def run(self, df, y_col, strat=None):
@@ -210,11 +207,10 @@ class Bootstrap(Trainer):
         size (float): Bootstrap size (between 0 and 1)
         n_folds_tuning (int): Number of folds for internal CV (training)
         random_state (int): Random state
-        n_cpus (int): Number of CPUs
     '''
 
-    def __init__(self, model, size=0.8, n_folds_tuning=5, random_state=None, n_cpus=None):
-        super().__init__(model, n_folds_tuning=n_folds_tuning, random_state=random_state, n_cpus=n_cpus)
+    def __init__(self, model, size=0.8, n_folds_tuning=5, random_state=None):
+        super().__init__(model, n_folds_tuning=n_folds_tuning, random_state=random_state)
         self.size = size
 
     def run(self, df, y_col, groups):
