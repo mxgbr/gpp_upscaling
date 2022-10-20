@@ -1,7 +1,7 @@
 import pandas as pd
 import sys
 import modules.utils as utils
-from modules.cv import CV
+from modules.training import CV
 import importlib.util
 
 if __name__ == "__main__":
@@ -20,6 +20,10 @@ if __name__ == "__main__":
     params = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(params)
     params = params.params
+
+    # random state, change with array id to make splits different but reproducible
+    if array_job:
+        params['random_state'] = params['random_state'] + array_id
 
     # select model
     if params['model'] == 'random_forest':
@@ -57,16 +61,16 @@ if __name__ == "__main__":
     # load data
     y_var = 'GPP_NT_CUT_REF'
     data = pd.read_csv('data/ec/data_monthly_0_05_2001-2020_v1.csv', index_col=['SITE_ID', 'Date'], parse_dates=True) 
-    data_sel = utils.preprocess(data, params['variable_set'], target=[y_var,'MODIS_LC'], cat=['MODIS_LC'])
-    strat = data_sel['MODIS_LC']
-    data_sel = data_sel.drop('MODIS_LC', axis=1)
+    data_sel, target = utils.preprocess(data, params['variable_set'], target=[y_var,'MODIS_LC'], cat=['MODIS_LC'])
+    strat = target['MODIS_LC']
+    data_sel[y_var] = target[y_var]
 
     # pre-processing
     if params['model'] == 'random_forest':
        data_sel, strat = preproc(data_sel, strat)
 
     # set up experiment
-    exp = utils.Experiment(suffix=array_id)
+    exp = utils.Experiment(suffix=array_id, logging=True)
 
     # run model
     model = ModelWrapper(**params['model_params'])
@@ -74,9 +78,9 @@ if __name__ == "__main__":
                 n_folds_cv=params['n_folds_cv'], 
                 n_folds_tuning=params['n_folds_tuning'],
                 random_state=params['random_state'],
-                num_cpus=params['num_cpus'])
+                n_cpus=params['n_cpus'])
 
-    runs, X, y = cv.fit_predict(data_sel, y_var, strat)
+    runs, X, y = cv.run(data_sel, y_var, strat)
 
     runs = {k: [dic[k] for dic in runs] for k in runs[0]}
 
