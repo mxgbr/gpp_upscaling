@@ -1,6 +1,10 @@
-# 2 arguments required: path of parameter file and $SLURM_JOB_ID
+# This file performs a CV for the models, parameters, and variables specified in the provided parameter file.
+# The CV is stratified for MODIS_LC and has GPP_NT_CUT_REF as target variable
+# The CV can be repeated with SLURM array jobs
+#
+# 2 arguments required: path of parameter file and $SLURM_JOB_ID or $SLURM_ARRAY_JOB_ID
 # 1 argument optional: $SLURM_ARRAY_TASK_ID
-# Saves experiment results in experiments/<Date><$SLURM_JOB_ID>_<$SLURM_ARRAY_TASK_ID>
+# Saves experiment results in experiments/<Date><$SLURM_ARRAY_JOB_ID>_<$SLURM_ARRAY_TASK_ID>
 
 import pandas as pd
 import sys
