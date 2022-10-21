@@ -207,7 +207,7 @@ class Experiment(object):
         else:
             suffix = ''
 
-        if preprend_date:
+        if prepend_date:
             prefix = self.start.strftime("%Y%m%d")
         else:
             prefix = ''
