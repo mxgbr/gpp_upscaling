@@ -12,10 +12,11 @@ params = {
     'model_params': {
         'n_estimators': [100, 200, 400, 800, 1600],
         'max_features': 15,
-        'min_samples_leaf': [1, 2, 5, 10],
-        'min_samples_split': [2, 4, 8, 12, 16],
-        'max_depth': [5, 10, 20, 30, 40, 50, 60, None],
-        'n_iter': 200,
-        'n_cpus': -1
+        'min_samples_leaf': [2, 5, 10],
+        'min_samples_split': [4, 8, 12, 16],
+        'max_depth': [5, 10, 20, None],
+        'n_iter': 50,
+        'n_cpus': 20,
+        'scoring': 'neg_root_mean_squared_error'
     }
 }
