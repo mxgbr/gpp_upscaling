@@ -1,3 +1,7 @@
+# 2 arguments required: path of parameter file and $SLURM_JOB_ID
+# 1 argument optional: $SLURM_ARRAY_TASK_ID
+# Saves experiment results in experiments/<Date><$SLURM_JOB_ID>_<$SLURM_ARRAY_TASK_ID>
+
 import pandas as pd
 import sys
 import modules.utils as utils
@@ -7,10 +11,12 @@ import importlib.util
 if __name__ == "__main__":
 
     # check if array task
-    array_job = len(sys.argv) > 2
+    array_job = len(sys.argv) > 3
+
+    slurm_id = sys.argv[2]
 
     if array_job:
-        array_id = sys.argv[2]
+        array_id = sys.argv[3]
     else:
         array_id = None
 
@@ -70,7 +76,7 @@ if __name__ == "__main__":
        data_sel, strat = preproc(data_sel, strat)
 
     # set up experiment
-    exp = utils.Experiment(suffix=array_id, logging=True)
+    exp = utils.Experiment(exp_id=slurm_id, suffix=array_id, logging=True)
 
     # run model
     model = ModelWrapper(**params['model_params'])

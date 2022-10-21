@@ -182,22 +182,38 @@ def select_vars(df, setting, gpp=None, strat=None):
 class Experiment(object):
     '''Organizes and logs model training and evaluation
 
-    Experiments are identifiable by their ID, consisting of YYYYMMDDHHMMSS when the experiment was started
+    Experiments are identifiable by their ID, consisting of YYYYMMDD when the experiment was started
 
     Attributes:
+        exp_id (str): Experiment ID
         path (str): Path to experiment folder
         output_dir (str): Location where experiments are stored
         logging (bool): Indicator if logging should be captured in a file
+        prepend_date (bool): Indicator wether to prepend date to experiment ID
+
+    TODO:
+        exp index time-independent
     '''
 
-    def __init__(self, exp_id=None, output_dir='experiments/', logging=False, suffix=None):
+    def __init__(self, exp_id='', output_dir='experiments/', logging=False, prepend_date=True, suffix=None):
+        self.start = dt.datetime.now()
+        
+        if exp_id == '':
+            prepend_date = True
+            exp_id = self.start.strftime("%H%M%S")
+        
         if suffix is not None:
             suffix = '_' + suffix
         else:
             suffix = ''
 
-        if exp_id is None:
-            exp_id = dt.datetime.now().strftime("%Y%m%d%H%M%S") + suffix
+        if preprend_date:
+            prefix = self.start.strftime("%Y%m%d")
+        else:
+            prefix = ''
+
+        exp_id = prefix + str(exp_id) + suffix
+
         self.exp_id = exp_id
         self.path = os.path.join(output_dir, self.exp_id)
         print(self.path)
@@ -215,7 +231,6 @@ class Experiment(object):
             print('--------------------------------------------')
             print('Logging ', self.exp_id)
 
-        self.start = dt.datetime.now()
         print('Initialized:', self.start.strftime("%Y:%m:%d %H:%M:%S"))
 
     def _create_folder(self):
@@ -288,7 +303,8 @@ class Experiment(object):
             sys.stderr = self.orig_stderr
             self.stdout.close()
 
-    def load(self):
+    @staticmethod
+    def load(path):
         '''Loads models and ouptuts
         
         Returns:
@@ -300,7 +316,7 @@ class Experiment(object):
             test_idx (list): List of lists with test indices
             y_pred (list): List of pd.Series of predictions
         '''
-        folds = len(glob.glob(os.path.join(self.path, 'fold_*')))
+        folds = len(glob.glob(os.path.join(path, 'fold_*')))
 
         X = None
         y = None
@@ -311,16 +327,16 @@ class Experiment(object):
         y_pred = []
         
         # open X
-        if os.path.isfile(os.path.join(self.path, 'X.csv')):
-            X = pd.read_csv(os.path.join(self.path, 'X.csv'), index_col=[0, 1], parse_dates=True)
+        if os.path.isfile(os.path.join(path, 'X.csv')):
+            X = pd.read_csv(os.path.join(path, 'X.csv'), index_col=[0, 1], parse_dates=True)
 
         # open y
-        if os.path.isfile(os.path.join(self.path, 'y.csv')):
-            y = pd.read_csv(os.path.join(self.path, 'y.csv'), index_col=[0, 1], parse_dates=True).squeeze()
+        if os.path.isfile(os.path.join(path, 'y.csv')):
+            y = pd.read_csv(os.path.join(path, 'y.csv'), index_col=[0, 1], parse_dates=True).squeeze()
 
         # open params
-        if os.path.isfile(os.path.join(self.path, 'params.txt')):
-            with open(os.path.join(self.path, 'params.txt'),'r') as inf:
+        if os.path.isfile(os.path.join(path, 'params.txt')):
+            with open(os.path.join(path, 'params.txt'),'r') as inf:
                 params = eval(inf.read())
 
         for idx in range(folds):
@@ -328,16 +344,16 @@ class Experiment(object):
             ## TODO
 
             # open train_idx
-            if os.path.isfile(os.path.join(self.path, 'fold_' + str(idx), 'train_idx.csv')):
-                train_idx.append(pd.read_csv(os.path.join(self.path, 'fold_' + str(idx), 'train_idx.csv')).squeeze().to_list())
+            if os.path.isfile(os.path.join(path, 'fold_' + str(idx), 'train_idx.csv')):
+                train_idx.append(pd.read_csv(os.path.join(path, 'fold_' + str(idx), 'train_idx.csv')).squeeze().to_list())
 
             # open test_idx
-            if os.path.isfile(os.path.join(self.path, 'fold_' + str(idx), 'test_idx.csv')):
-                test_idx.append(pd.read_csv(os.path.join(self.path, 'fold_' + str(idx), 'test_idx.csv')).squeeze().to_list())
+            if os.path.isfile(os.path.join(path, 'fold_' + str(idx), 'test_idx.csv')):
+                test_idx.append(pd.read_csv(os.path.join(path, 'fold_' + str(idx), 'test_idx.csv')).squeeze().to_list())
 
             # open y_pred
-            if os.path.isfile(os.path.join(self.path, 'fold_' + str(idx), 'y_pred.csv')):
-                y_pred.append(pd.read_csv(os.path.join(self.path, 'fold_' + str(idx), 'y_pred.csv'), index_col=[0, 1], parse_dates=True).squeeze())
+            if os.path.isfile(os.path.join(path, 'fold_' + str(idx), 'y_pred.csv')):
+                y_pred.append(pd.read_csv(os.path.join(path, 'fold_' + str(idx), 'y_pred.csv'), index_col=[0, 1], parse_dates=True).squeeze())
 
         return X, y, params, models, train_idx, test_idx, y_pred
 
