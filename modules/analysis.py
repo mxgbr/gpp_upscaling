@@ -3,7 +3,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import sklearn
 import pandas as pd
+import numpy as np
 import itertools
+import glob
+import os
+from sklearn.linear_model import LinearRegression
+from datetime import date
 
 import modules.utils as utils
 
@@ -24,7 +29,7 @@ lc_colors = {
     'WAT': '#335BA3',
     'REST': '#46237A'
 }
-sns.set_palette(sns.color_palette(list(lc_colors.values()))
+sns.set_palette(sns.color_palette(list(lc_colors.values())))
 
 # default chart layout
 plt.rcParams['figure.figsize'] = [9, 6]
@@ -48,14 +53,15 @@ def eval_metrics(exp_id, exp_dir='experiments/', out_path=None):
     repetitions = glob.glob(os.path.join(exp_dir, str(exp_id) + '_*'))
 
     final_df = []
-    for rep in repetitions
-        _, y, _, _, _, test_idx, y_pred = utils.Experiment.load(os.path.join(exp_dir, rep))
+    for rep in repetitions:
+        print(rep)
+        _, y, _, _, _, test_idx, y_pred = utils.Experiment.load(rep)
         y.name = 'GT'
-        y_pred.name = 'Pred'
 
         test_idx = list(itertools.chain(*test_idx))
         y_pred = pd.concat(y_pred)
-        y_eval = pd.concat([y.iloc[test_idx], y_pred])
+        y_pred.name = 'Pred'
+        y_eval = pd.concat([y.iloc[test_idx], y_pred], axis=1)
 
         r2_overall = sklearn.metrics.r2_score(y_eval.GT.values, y_eval.Pred.values)
         r2_trend = sklearn.metrics.r2_score(across_site_trend(y_eval.GT).values, across_site_trend(y_eval.Pred).values)
@@ -69,7 +75,7 @@ def eval_metrics(exp_id, exp_dir='experiments/', out_path=None):
         rmse_sites = sklearn.metrics.mean_squared_error(across_site_variability(y_eval.GT).values, across_site_variability(y_eval.Pred).values, squared=False)
         rmse_msc = sklearn.metrics.mean_squared_error(msc(y_eval.GT).values, msc(y_eval.Pred).values, squared=False)
 
-        final_df.append([rep, r2_overall, r2_trend, r2_anomalies, r2_sites, r2_msc, rmse_overall, rmse_trend, rmse_anomalies, rmse_sites, rmse_msc])
+        final_df.append([rep.split('/')[-1], r2_overall, r2_trend, r2_anomalies, r2_sites, r2_msc, rmse_overall, rmse_trend, rmse_anomalies, rmse_sites, rmse_msc])
 
     final_df = pd.DataFrame(final_df, columns=['exp_id', 'r2_overall', 'r2_trend', 'r2_anomalies', 'r2_sites', 'r2_msc', 'rmse_overall', 'rmse_trend', 'rmse_anomalies', 'rmse_sites', 'rmse_msc']).set_index('exp_id')
     
@@ -79,16 +85,47 @@ def eval_metrics(exp_id, exp_dir='experiments/', out_path=None):
 
     return final_df
 
-def plt_model_comparison():
+def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
     '''Creates violin plot for models and variables
 
     Args:
         data (pd.DataFrame): Data frame of modeling results
+        out_dir (str): Path to output directory
         var_set (str): Name of var set column
         model (str): Name of model column
         metric (str): Name of metric column
     '''
-    pass
+    ax = sns.violinplot(data=data, hue=var_set, x=model, y=metric, showfliers=True, inner="quartile", **kwargs)
+    sns.swarmplot(data=data, hue=var_set, x=model, y=metric, color="black", legend=False)
+    ax.set_ylabel('$r^2$')
+    ax.set_title('Overall')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, 'benchmark_r2_overall.pdf'))
+
+    fig, ax = plt.subplots(2, 2, figsize=(18, 12))
+    sns.violinplot(data=data, hue=var_set, x=model, y='r2_trend', ax=ax[0,0], inner="quartile", **kwargs)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_trend', color="black", ax=ax[0,0], legend=False)
+
+    sns.violinplot(data=data, hue=var_set, x=model, y='r2_sites', ax=ax[0,1], inner="quartile", **kwargs)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_sites', color="black", ax=ax[0,1], legend=False)
+
+    sns.violinplot(data=data, hue=var_set, x=model, y='r2_msc', ax=ax[1,0], inner="quartile", **kwargs)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_msc', color="black", ax=ax[1,0], legend=False)
+
+    sns.violinplot(data=data, hue=var_set, x=model, y='r2_anomalies', ax=ax[1,1], inner="quartile", **kwargs)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', color="black", ax=ax[1,1], legend=False)
+
+    ax[0, 0].set_title('Trend')
+    ax[0, 1].set_title('Across-site Variability')
+    ax[1, 0].set_title('Mean Seasonal Cycle')
+    ax[1, 1].set_title('Anomalies')
+
+    ax[0, 0].set_ylabel('$r^2$')
+    ax[1, 0].set_ylabel('$r^2$')
+    ax[0, 1].set_ylabel('$r^2$')
+    ax[1, 1].set_ylabel('$r^2$')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, 'benchmark_r2_decomp.pdf'))
 
 def evaluation_plot(y_eval):
     '''
@@ -178,3 +215,65 @@ def evaluation_plot(y_eval):
     fig = plt.gcf()
     plt.show()
     return fig
+
+def annual_mean(ts, transform=False):
+    '''Calculates annual mean values'''
+    grp = ts.groupby(['SITE_ID', ts.index.get_level_values('Date').year])
+    if transform:
+        return grp.transform('mean')
+    return grp.mean()
+
+def across_site_variability(ts):
+    return ts.groupby('SITE_ID').mean()
+
+def iav(ts, detrend=False):
+    ts = ts.sub(msc(ts, transform=True))
+    if detrend == True:
+        ts = ts.sub(trend(ts))
+
+    return ts
+
+def msc(ts, transform=False, no_mean=False):
+    if no_mean:
+        ts = ts.sub(ts.groupby(['SITE_ID']).transform('mean'))
+    grp = ts.groupby(['SITE_ID', ts.index.get_level_values('Date').month])
+    if transform:
+        return grp.transform('mean')
+    return grp.mean()
+
+def lr_model(series_inp, return_coef=False):
+    series = series_inp.droplevel(0)
+    x = ((series.index - pd.to_datetime(date(1970, 1, 31))) / np.timedelta64(1, 'M')).values.round().reshape(-1, 1)
+    y = series.values
+    lr = LinearRegression()
+    lr.fit(x, y)
+    if return_coef == True:
+            return lr.coef_
+    return pd.Series(lr.predict(x), index=series_inp.index)
+
+def trend(ts):
+    '''Calculates trend and intercept
+    
+    Groups by sites in performs a linear regression for each site
+
+    Args:
+        ts (DataFrame): time series with sites and dates as index
+
+    Returns:
+        Slope in pd.Series
+    '''     
+    grp = ts.groupby(['SITE_ID']).apply(lr_model)
+    return grp
+
+def across_site_trend(ts):
+    '''
+    Calculates trend on site level from linear regression
+
+    Args:
+        ts (DataFrame): time series with sites and dates as index
+
+    Returns:
+        pd.Series with trend-only values
+    '''
+    grp = ts.groupby('SITE_ID').apply(lr_model, return_coef=True)
+    return pd.Series(np.concatenate(grp.values).ravel(), index=grp.index)

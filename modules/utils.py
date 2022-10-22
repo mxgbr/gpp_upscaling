@@ -1,8 +1,6 @@
 #from random import random
 import numpy as np
 import pandas as pd
-from datetime import date
-from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 
 import sklearn
@@ -438,65 +436,3 @@ def r2_plot(x, y, ax, r2=None, rmse=None, n_bins=40, line=True, threshold=0.005)
     return im
 
 ## filter site-years with not enough data
-
-def annual_mean(ts, transform=False):
-    '''Calculates annual mean values'''
-    grp = ts.groupby(['SITE_ID', ts.index.get_level_values('Date').year])
-    if transform:
-        return grp.transform('mean')
-    return grp.mean()
-
-def across_site_variability(ts):
-    return ts.groupby('SITE_ID').mean()
-
-def iav(ts, detrend=False):
-    ts = ts.sub(msc(ts, transform=True))
-    if detrend == True:
-        ts = ts.sub(trend(ts))
-
-    return ts
-
-def msc(ts, transform=False, no_mean=False):
-    if no_mean:
-        ts = ts.sub(ts.groupby(['SITE_ID']).transform('mean'))
-    grp = ts.groupby(['SITE_ID', ts.index.get_level_values('Date').month])
-    if transform:
-        return grp.transform('mean')
-    return grp.mean()
-
-def lr_model(series_inp, return_coef=False):
-    series = series_inp.droplevel(0)
-    x = ((series.index - pd.to_datetime(date(1970, 1, 31))) / np.timedelta64(1, 'M')).values.round().reshape(-1, 1)
-    y = series.values
-    lr = LinearRegression()
-    lr.fit(x, y)
-    if return_coef == True:
-            return lr.coef_
-    return pd.Series(lr.predict(x), index=series_inp.index)
-
-def trend(ts):
-    '''Calculates trend and intercept
-    
-    Groups by sites in performs a linear regression for each site
-
-    Args:
-        ts (DataFrame): time series with sites and dates as index
-
-    Returns:
-        Slope in pd.Series
-    '''     
-    grp = ts.groupby(['SITE_ID']).apply(lr_model)
-    return grp
-
-def across_site_trend(ts):
-    '''
-    Calculates trend on site level from linear regression
-
-    Args:
-        ts (DataFrame): time series with sites and dates as index
-
-    Returns:
-        pd.Series with trend-only values
-    '''
-    grp = ts.groupby('SITE_ID').apply(lr_model, return_coef=True)
-    return pd.Series(np.concatenate(grp.values).ravel(), index=grp.index)
