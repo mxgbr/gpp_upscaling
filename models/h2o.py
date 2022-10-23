@@ -9,7 +9,8 @@ class H2o(BaseModel):
                  time=60, 
                  port=54321, 
                  nthreads=-1, 
-                 max_mem_size=None
+                 max_mem_size=None,
+                 scoring='AUTO'
                 ):
         
         super().__init__()
@@ -17,7 +18,8 @@ class H2o(BaseModel):
         self.leaderboard = None
         self.port = port
         self.nthreads = nthreads
-        self.max_mem_size = max_mem_size'
+        self.max_mem_size = max_mem_size
+        self.scoring = scoring
 
         h2o.init(port=port, nthreads=nthreads, max_mem_size=max_mem_size)
 
@@ -28,7 +30,7 @@ class H2o(BaseModel):
         self.model = None
 
         hf_train = h2o.H2OFrame(train)
-        model = H2OAutoML(max_runtime_secs=self.time)
+        model = H2OAutoML(max_runtime_secs=self.time, sort_metric=self.scoring, stopping_metric=self.scoring)
         model.train(y='GPP', training_frame=hf_train, fold_column='groups')
 
         self.leaderboard = model.leaderboard.as_data_frame()
