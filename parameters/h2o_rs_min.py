@@ -10,7 +10,7 @@ params = {
     'variable_set': 'rs_min',
     'model': 'h2o',
     'model_params': {
-        'time': 1*60,
+        'time': 30*60,
         'scoring': 'RMSE'
     }
 }
