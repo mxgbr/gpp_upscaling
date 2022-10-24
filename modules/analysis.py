@@ -54,7 +54,6 @@ def eval_metrics(exp_id, exp_dir='experiments/', out_path=None, min_months=0):
 
     final_df = []
     for rep in repetitions:
-        print(rep)
         _, y, _, _, _, test_idx, y_pred = utils.Experiment.load(rep)
         y.name = 'GT'
 
@@ -128,6 +127,95 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
     ax[1, 1].set_ylabel('$r^2$')
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, 'benchmark_r2_decomp.pdf'))
+
+def eval_lc(exp_id, exp_dir, site_df, out_path=None, min_months=0):
+    '''Evaluated performance per LC class
+
+    Args:
+        exp_id (int): Experiment ID
+        exp_dir (str): Directory of experiments
+        site_df (pd.DataFrame): Frame including IGBP and koppen_main columns with SITE_ID as index
+        out_path (str): Saving directory
+
+    Returns:
+        Dataframe with repetitions as rows and metrics as columns
+    '''
+    # get all array_ids for experiment
+    repetitions = glob.glob(os.path.join(exp_dir, str(exp_id) + '_*'))
+
+    final_df = []
+    for rep in repetitions:
+        _, y, _, _, _, test_idx, y_pred = utils.Experiment.load(rep)
+        y.name = 'GT'
+
+        test_idx = list(itertools.chain(*test_idx))
+        y_pred = pd.concat(y_pred)
+        y_pred.name = 'Pred'
+        y_eval = pd.concat([y.iloc[test_idx], y_pred], axis=1)
+
+        y_eval = y_eval[(y_eval.GT.groupby('SITE_ID').transform(lambda x: x.count()) >= min_months)]
+
+        y_eval = y_eval.merge(site_df[['IGBP', 'koppen_main']], left_on='SITE_ID', right_index=True)
+
+        r2_overall = y_eval.groupby(['SITE_ID', 'IGBP']).apply(lambda x: sklearn.metrics.r2_score(x.GT, x.Pred))
+        r2_overall.name = 'r2_overall'
+        r2_msc = y_eval.groupby(['SITE_ID', 'IGBP']).apply(lambda x: sklearn.metrics.r2_score(msc(x.GT), msc(x.Pred)))
+        r2_msc.name = 'r2_msc'
+        r2_anomalies = y_eval.groupby(['SITE_ID', 'IGBP']).apply(lambda x: sklearn.metrics.r2_score(iav(x.GT, detrend=True), iav(x.Pred, detrend=True)))
+        r2_anomalies.name = 'r2_anomalies'
+        rep_idx = pd.Series(rep.split('/')[-1], index=r2_anomalies.index, name='exp_id')
+
+        final_df.append(pd.concat([rep_idx, r2_overall, r2_msc, r2_anomalies], axis=1))
+
+    final_df = pd.concat(final_df).reset_index(level='IGBP', drop=False).set_index('exp_id')
+    
+    if out_path is not None:
+        os.makedirs(os.path.join(out_path, exp_id), exist_ok=True)
+        final_df.to_csv(os.path.join(out_path, exp_id, 'metrics_lc.csv'))
+
+    return final_df
+
+def plt_lc_comparison(data, out_dir, lc, exp, **kwargs):
+    '''Creates violin plot for one model in different LCs
+
+    Args:
+        data (pd.DataFrame): Data frame of modeling results
+        out_dir (str): Path to output directory
+        lc (str): Name of lc column
+        exp (str): Name of experiment repetition id
+        metric (str): Name of metric column
+        **kwargs: Arguments for seaborn
+    '''
+    fig, ax = plt.subplots(3, 1, figsize=(9, 18), sharex=True)
+
+    for exp_id in data[exp].unique():
+        df = data[data[exp] == exp_id]
+
+        sns.violinplot(data=df, x=lc, y='r2_overall', ax=ax[0], inner='box', **kwargs)
+        sns.violinplot(data=df, x=lc, y='r2_msc', ax=ax[1], inner='box', **kwargs)
+        sns.violinplot(data=df, x=lc, y='r2_anomalies', ax=ax[2], inner='box', **kwargs)
+
+        # workaround for transparent faces
+        for ax_ii in ax:
+            for col in ax_ii.collections[::2]:
+                col.set_facecolor((0, 0, 0, 0))
+                col.set_edgecolor((0, 0, 0, 0.5))
+            
+            for col in ax_ii.collections[1::2]:
+                col.set_alpha(0)
+                
+            for lines in ax_ii.lines:
+                lines.set_alpha(0)
+
+    ax[0].set_title('Overall')
+    ax[1].set_title('Mean Seasonal Cycle')
+    ax[2].set_title('Anomalies')
+
+    ax[0].set_ylabel('$r^2$')
+    ax[1].set_ylabel('$r^2$')
+    ax[2].set_ylabel('$r^2$')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, 'benchmark_r2_lc.pdf'))
 
 def evaluation_plot(y_eval):
     '''
