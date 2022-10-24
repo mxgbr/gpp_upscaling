@@ -36,7 +36,7 @@ plt.rcParams['figure.figsize'] = [9, 6]
 plt.rcParams['figure.dpi'] = 300
 plt.rcParams['font.size'] = 12
 
-def eval_metrics(exp_id, exp_dir='experiments/', out_path=None):
+def eval_metrics(exp_id, exp_dir='experiments/', out_path=None, min_months=0):
     '''Evaluates repeated CVs
 
     Reads experiments and combines folds to sensitivity analysis.
@@ -62,6 +62,8 @@ def eval_metrics(exp_id, exp_dir='experiments/', out_path=None):
         y_pred = pd.concat(y_pred)
         y_pred.name = 'Pred'
         y_eval = pd.concat([y.iloc[test_idx], y_pred], axis=1)
+
+        y_eval = y_eval[(y_eval.GT.groupby('SITE_ID').transform(lambda x: x.count()) >= min_months)]
 
         r2_overall = sklearn.metrics.r2_score(y_eval.GT.values, y_eval.Pred.values)
         r2_trend = sklearn.metrics.r2_score(across_site_trend(y_eval.GT).values, across_site_trend(y_eval.Pred).values)
@@ -96,7 +98,7 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
         metric (str): Name of metric column
     '''
     ax = sns.violinplot(data=data, hue=var_set, x=model, y=metric, showfliers=True, inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y=metric, color="black", legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y=metric, palette='dark:black', legend=False)
     ax.set_ylabel('$r^2$')
     ax.set_title('Overall')
     plt.tight_layout()
@@ -104,16 +106,16 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
 
     fig, ax = plt.subplots(2, 2, figsize=(18, 12))
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_trend', ax=ax[0,0], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_trend', color="black", ax=ax[0,0], legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_trend', palette='dark:black', ax=ax[0,0], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_sites', ax=ax[0,1], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_sites', color="black", ax=ax[0,1], legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_sites', palette='dark:black', ax=ax[0,1], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_msc', ax=ax[1,0], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_msc', color="black", ax=ax[1,0], legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_msc', palette='dark:black', ax=ax[1,0], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_anomalies', ax=ax[1,1], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', color="black", ax=ax[1,1], legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', palette='dark:black', ax=ax[1,1], legend=False)
 
     ax[0, 0].set_title('Trend')
     ax[0, 1].set_title('Across-site Variability')
