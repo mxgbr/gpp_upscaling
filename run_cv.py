@@ -82,6 +82,9 @@ if __name__ == "__main__":
     # set up experiment
     exp = utils.Experiment(exp_id=slurm_id, suffix=array_id, logging=True)
 
+    print('Using explanatory variables:')
+    print(list(data_sel.columns))
+
     # run model
     model = ModelWrapper(**params['model_params'])
     cv = CV(model, 
