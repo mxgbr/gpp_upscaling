@@ -55,6 +55,9 @@ def eval_metrics(exp_id, exp_dir='experiments/', out_path=None, min_months=0):
     final_df = []
     for rep in repetitions:
         _, y, _, _, _, test_idx, y_pred = utils.Experiment.load(rep)
+        if len(y_pred) == 0:
+            print('Experiment ' + str(rep) + ' couln\'t be loaded.')
+            continue
         y.name = 'GT'
 
         test_idx = list(itertools.chain(*test_idx))
@@ -97,7 +100,7 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
         metric (str): Name of metric column
     '''
     ax = sns.violinplot(data=data, hue=var_set, x=model, y=metric, showfliers=True, inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y=metric, palette='dark:black', legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y=metric, dodge=True, palette='dark:black', legend=False)
     ax.set_ylabel('$r^2$')
     ax.set_title('Overall')
     plt.tight_layout()
@@ -105,16 +108,16 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
 
     fig, ax = plt.subplots(2, 2, figsize=(18, 12))
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_trend', ax=ax[0,0], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_trend', palette='dark:black', ax=ax[0,0], legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_trend', dodge=True, palette='dark:black', ax=ax[0,0], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_sites', ax=ax[0,1], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_sites', palette='dark:black', ax=ax[0,1], legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_sites', dodge=True, palette='dark:black', ax=ax[0,1], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_msc', ax=ax[1,0], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_msc', palette='dark:black', ax=ax[1,0], legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_msc', dodge=True, palette='dark:black', ax=ax[1,0], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_anomalies', ax=ax[1,1], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', palette='dark:black', ax=ax[1,1], legend=False)
+    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', dodge=True, palette='dark:black', ax=ax[1,1], legend=False)
 
     ax[0, 0].set_title('Trend')
     ax[0, 1].set_title('Across-site Variability')
@@ -167,7 +170,7 @@ def eval_lc(exp_id, exp_dir, site_df, out_path=None, min_months=0):
 
         final_df.append(pd.concat([rep_idx, r2_overall, r2_msc, r2_anomalies], axis=1))
 
-    final_df = pd.concat(final_df).reset_index(level='IGBP', drop=False).set_index('exp_id')
+    final_df = pd.concat(final_df).reset_index(level='IGBP', drop=False).set_index('exp_id', append=True)
     
     if out_path is not None:
         os.makedirs(os.path.join(out_path, exp_id), exist_ok=True)
@@ -175,8 +178,8 @@ def eval_lc(exp_id, exp_dir, site_df, out_path=None, min_months=0):
 
     return final_df
 
-def plt_lc_comparison(data, out_dir, lc, exp, **kwargs):
-    '''Creates violin plot for one model in different LCs
+def plt_lc_violin(data, out_dir, lc, exp, **kwargs):
+    '''Creates violin plot for all models in different LCs
 
     Args:
         data (pd.DataFrame): Data frame of modeling results
@@ -186,7 +189,7 @@ def plt_lc_comparison(data, out_dir, lc, exp, **kwargs):
         metric (str): Name of metric column
         **kwargs: Arguments for seaborn
     '''
-    fig, ax = plt.subplots(3, 1, figsize=(9, 18), sharex=True)
+    fig, ax = plt.subplots(3, 1, figsize=(9, 12), sharex=True)
 
     for exp_id in data[exp].unique():
         df = data[data[exp] == exp_id]
@@ -207,6 +210,14 @@ def plt_lc_comparison(data, out_dir, lc, exp, **kwargs):
             for lines in ax_ii.lines:
                 lines.set_alpha(0)
 
+    ax[0].set_ylim(-4, 1.5)
+    ax[1].set_ylim(-4, 1.5)
+    ax[2].set_ylim(-4, 1.5)
+
+    ax[0].axhline(y=0, color='gray', zorder=0, linestyle='--')
+    ax[1].axhline(y=0, color='gray', zorder=0, linestyle='--')
+    ax[2].axhline(y=0, color='gray', zorder=0, linestyle='--')
+
     ax[0].set_title('Overall')
     ax[1].set_title('Mean Seasonal Cycle')
     ax[2].set_title('Anomalies')
@@ -216,6 +227,43 @@ def plt_lc_comparison(data, out_dir, lc, exp, **kwargs):
     ax[2].set_ylabel('$r^2$')
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, 'benchmark_r2_lc.pdf'))
+
+def plt_lc_meanbox(data, out_dir, lc, exp, **kwargs):
+    '''Creates box plot for one model in different LCs
+
+    Args:
+        data (pd.DataFrame): Data frame of modeling results
+        out_dir (str): Path to output directory
+        lc (str): Name of lc column
+        exp (str): Name of experiment repetition id
+        metric (str): Name of metric column
+        **kwargs: Arguments for seaborn
+    '''
+    fig, ax = plt.subplots(3, 1, figsize=(9, 12), sharex=True)
+
+    ax[0].axhline(y=0, color='gray', zorder=0, linestyle='--')
+    ax[1].axhline(y=0, color='gray', zorder=0, linestyle='--')
+    ax[2].axhline(y=0, color='gray', zorder=0, linestyle='--')
+
+    data = data.drop(exp, axis=1).groupby(['SITE_ID', lc]).mean().reset_index(level=lc)
+
+    sns.boxplot(data=data, x=lc, y='r2_overall', ax=ax[0], **kwargs)
+    sns.boxplot(data=data, x=lc, y='r2_msc', ax=ax[1], **kwargs)
+    sns.boxplot(data=data, x=lc, y='r2_anomalies', ax=ax[2], **kwargs)
+
+    ax[0].set_ylim(-7.5, 1.5)
+    ax[1].set_ylim(-10, 1.5)
+    ax[2].set_ylim(-3, 1.5)
+
+    ax[0].set_title('Overall')
+    ax[1].set_title('Mean Seasonal Cycle')
+    ax[2].set_title('Anomalies')
+
+    ax[0].set_ylabel('$r^2$')
+    ax[1].set_ylabel('$r^2$')
+    ax[2].set_ylabel('$r^2$')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, 'benchmark_r2_lc_box.pdf'))
 
 def evaluation_plot(y_eval):
     '''
@@ -352,7 +400,7 @@ def trend(ts):
     Returns:
         Slope in pd.Series
     '''     
-    grp = ts.groupby(['SITE_ID']).apply(lr_model)
+    grp = ts.groupby(['SITE_ID']).apply(lr_model, group_keys=True)
     return grp
 
 def across_site_trend(ts):
