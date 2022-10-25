@@ -202,7 +202,7 @@ def plt_lc_violin(data, out_dir, lc, exp, **kwargs):
         for ax_ii in ax:
             for col in ax_ii.collections[::2]:
                 col.set_facecolor((0, 0, 0, 0))
-                col.set_edgecolor((0, 0, 0, 0.5))
+                col.set_edgecolor((0, 0, 0, 0.4))
             
             for col in ax_ii.collections[1::2]:
                 col.set_alpha(0)
@@ -214,7 +214,8 @@ def plt_lc_violin(data, out_dir, lc, exp, **kwargs):
     ax[1].set_ylim(-4, 1.5)
     ax[2].set_ylim(-4, 1.5)
 
-    ax[0].axhline(y=0, color='gray', zorder=0, linestyle='--')
+    li = ax[0].axhline(y=0, color='gray', zorder=0, linestyle='--')
+    li.set_alpha(1)
     ax[1].axhline(y=0, color='gray', zorder=0, linestyle='--')
     ax[2].axhline(y=0, color='gray', zorder=0, linestyle='--')
 
@@ -247,9 +248,9 @@ def plt_lc_meanbox(data, out_dir, lc, exp, **kwargs):
 
     data = data.drop(exp, axis=1).groupby(['SITE_ID', lc]).mean().reset_index(level=lc)
 
-    sns.boxplot(data=data, x=lc, y='r2_overall', ax=ax[0], **kwargs)
-    sns.boxplot(data=data, x=lc, y='r2_msc', ax=ax[1], **kwargs)
-    sns.boxplot(data=data, x=lc, y='r2_anomalies', ax=ax[2], **kwargs)
+    sns.boxplot(data=data, x=lc, y='r2_overall', ax=ax[0], color=sns.color_palette()[0], **kwargs)
+    sns.boxplot(data=data, x=lc, y='r2_msc', ax=ax[1], color=sns.color_palette()[0], **kwargs)
+    sns.boxplot(data=data, x=lc, y='r2_anomalies', ax=ax[2], color=sns.color_palette()[0], **kwargs)
 
     ax[0].set_ylim(-7.5, 1.5)
     ax[1].set_ylim(-10, 1.5)
