@@ -15,7 +15,7 @@ params = {
         'min_samples_leaf': [2, 5, 10],
         'min_samples_split': [4, 8, 12, 16],
         'max_depth': [5, 10, 20, None],
-        'n_iter': 150,
+        'n_iter': 125,
         'n_cpus': 20,
         'scoring': 'neg_root_mean_squared_error'
     }
