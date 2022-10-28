@@ -3,6 +3,7 @@ import h2o
 from h2o.automl import H2OAutoML
 import os
 import re
+import glob
 
 class H2o(BaseModel):
     def __init__(self, 
@@ -49,6 +50,7 @@ class H2o(BaseModel):
 
     @staticmethod
     def load(path):
+        path = glob.glob(os.path.join(path, '*_AutoML_*'))[0]
         path = os.path.abspath(path)
         h2o.init(port=54321)
         return h2o.load_model(path)
