@@ -47,23 +47,45 @@ def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
         df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR']]
 
     elif var_set == 'rs_min_vi':
-        df_out = df[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI']]
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI']]
 
     elif var_set == 'rs':
-        df_out = df[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
                      'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET']]
         cat.append('MODIS_LC')
 
     elif var_set == 'rs_vi':
-        df_out = df[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
                      'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET']]
         cat.append('MODIS_LC')
 
     elif var_set == 'rs_meteo':
-        df_out = df[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
                      'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'BESS-PAR', 'BESS-RSDN', 
                      'BESS-PARdiff', 'CSIF-SIFdaily', 'CSIF-SIFinst']]
         cat.append('MODIS_LC')
+
+    elif setting == 'model0':
+        # Yanghui
+        df_out = df_out[['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
+                     'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
+                     'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC']]
+
+    elif setting == 'model1':
+        # Yanghui
+        df_out = df_out[['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
+                     'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
+                     'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC']]
+
+        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
+
+    elif setting == 'model2':
+        # Yanghui
+        df_out = df_out[['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
+                     'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
+                     'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC', 'CO2_concentration']]
+
+        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
 
     # One-Hot Encoding
     cat_dfs = []
@@ -86,114 +108,6 @@ def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
         target = target.loc[df_out.index]
 
     return df_out, target
-
-def select_vars(df, setting, gpp=None, strat=None):
-    '''selects different predictors for different experiment set-ups
-    
-    TODO:
-        can be removed
-    '''
-    
-    cat = []
-
-    if type(setting) is list:
-        df_out = df[setting]
-        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
-
-    elif setting == 'tramontana_RS':
-        df_out = df[['MODIS_LC', 'NDWI', 'LST_Day', 'LST_Night']].copy()
-        df_out['EVI_amp_msc'] = msc(df['EVI'], transform=True, no_mean=True).max()
-        df_out['b7_amp_msc'] = msc(df['b7'], transform=True, no_mean=True).max()
-        df_out['LST_Day_max_msc'] = msc(df['LST_Day'], transform=True).max()
-        df_out['LAI_msc'] = msc(df['LAI'], transform=True).max()
-        # NDVI x incoming radiation (Rpot)
-
-        cat.append('MODIS_LC')
-
-    elif setting == 'tramontana_RS+METEO':
-        df_out = df[['MODIS_LC', 'Tair']]
-        df_out['NDVI_amp_msc'] = msc(df['NDVI'], transform=True, no_mean=True).max()
-        df_out['b4_amp_msc'] = msc(df['b4'], transform=True, no_mean=True).max()
-        df_out['NDWI_amp_msc'] = msc(df['NDWI'], transform=True, no_mean=True).max()
-        # water availability lower amplitude of MSC
-        # WAI_L
-        df_out['LST_Night_msc'] = msc(df['LST_Night'], transform=True).max()
-        df_out['(Fpar,LST_Day)_msc'] = msc(df['Fpar'] * df['LST_Day'], transform=True).max()
-        # EVI x Rpot MSC
-        # incoming radiation (Rpot) x (MSC of NDVI)
-
-        cat.append('MODIS_LC')
-
-    elif setting == 'me_RS':
-        df_out = df[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
-                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff']]
-                     # ESACCI-sm
-                     # 'evaporation_from_vegetation_transpiration'
-        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
-
-        cat.append('MODIS_LC')
-
-    elif setting == 'me_RS+METEO':
-        df_out = df[['total_precipitation', 'temperature_2m', 'vpd', 'prcp-lag3', 'b1', 'b2', 'b3', 'b4', 'b5', 
-                'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
-                'Fpar', 'evaporation_from_vegetation_transpiration', 'ESACCI-sm', 'BESS-PAR', 'BESS-RSDN', 
-                'BESS-PARdiff', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC']]
-        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
-
-        cat.append('MODIS_LC')
-
-    elif setting == 'rs_min':
-        # see https://daac.ornl.gov/VEGETATION/guides/FluxSat_GPP_FPAR.html
-        df_out = df[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR']]
-
-    elif setting == 'model0':
-        # Yanghui
-        df_out = df[['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
-                     'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
-                     'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC']]
-
-    elif setting == 'model1':
-        # Yanghui
-        df_out = df[['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
-                     'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
-                     'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC']]
-
-        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
-
-    elif setting == 'model2':
-        # Yanghui
-        df_out = df[['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
-                     'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
-                     'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC', 'CO2_concentration']]
-
-        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
-
-    if gpp is not None:
-        df_out = df_out.merge(gpp, left_index=True, right_index=True)
-    else:
-        df_out.loc[:, 'GPP'] = df['GPP_NT_VUT_REF']
-
-    # One-Hot Encoding
-    for category in cat:
-        ohc = OneHotEncoder(sparse=False)
-        X_cat = ohc.fit_transform(df_out[category].values.reshape(-1, 1))
-        df_out = df_out.drop(category, axis=1)
-        data_ohc = pd.DataFrame(np.array(X_cat), index=df_out.index, columns=[category + '_' + str(name) for name in ohc.categories_[0]])
-        if np.nan in data_ohc.columns:
-            data_ohc = data_ohc.drop(np.nan, axis=1)
-        df_out = pd.concat([df_out, data_ohc], axis=1)
-
-    # drop nans (where all x nan or y nan)
-    ## TODO should not be necessary
-    nan_mask_x = df_out.drop('GPP', axis=1).notna().any(axis=1)
-    nan_mask_y = df_out['GPP'].notna()
-    df_out = df_out[nan_mask_x & nan_mask_y]
-
-    if strat is not None:
-        strat = df[strat]
-        strat = strat.loc[strat.index.intersection(df_out.index)]
-
-    return df_out, strat
 
 class Experiment(object):
     '''Organizes and logs model training and evaluation
@@ -387,6 +301,10 @@ class Experiment(object):
         pass
 
 def eval_sensitivity(runs, y, random_state, min_months=24, cols={}, exp_name='', idx=None):
+    '''
+    TODO:
+        Not needed anymore
+    '''
     # calc metrics r2 and rmse
     y_eval = []
     for ii in runs:
@@ -426,6 +344,10 @@ def eval_sensitivity(runs, y, random_state, min_months=24, cols={}, exp_name='',
     out_df.to_csv(out_path, mode='a', header=not os.path.exists(out_path))
 
 def r2_plot(x, y, ax, r2=None, rmse=None, n_bins=40, line=True, threshold=0.005):
+    '''
+    TODO:
+        Not needed anymore
+    '''
     cmap = cm.get_cmap('viridis').copy()
     cmap.set_under('w')
     vmin = np.minimum(y.min(), x.min())
