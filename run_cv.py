@@ -99,7 +99,7 @@ if __name__ == "__main__":
     print(runs['metrics'])
 
     # save results
-    exp.save(len(runs), X=X, y=y, params=params, models=runs['model'], train_idx=runs['train_idx'], test_idx=runs['test_idx'], y_pred=runs['pred'])
+    exp.save(len(runs['model']), X=X, y=y, params=params, models=runs['model'], train_idx=runs['train_idx'], test_idx=runs['test_idx'], y_pred=runs['pred'])
 
     print('PYTHON DONE')
     quit()
