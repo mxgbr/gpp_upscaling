@@ -88,7 +88,11 @@ def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
     return df_out, target
 
 def select_vars(df, setting, gpp=None, strat=None):
-    '''selects different predictors for different experiment set-ups'''
+    '''selects different predictors for different experiment set-ups
+    
+    TODO:
+        can be removed
+    '''
     
     cat = []
 
@@ -209,6 +213,7 @@ class Experiment(object):
 
     def __init__(self, exp_id='', output_dir='experiments/', logging=False, prepend_date=True, suffix=None):
         self.start = dt.datetime.now()
+        self.suffix = suffix
         
         if exp_id == '':
             prepend_date = True
@@ -224,7 +229,7 @@ class Experiment(object):
         else:
             prefix = ''
 
-        exp_id = prefix + str(exp_id) + suffix
+        exp_id = prefix + str(exp_id) + str(suffix)
 
         self.exp_id = exp_id
         self.path = os.path.join(output_dir, self.exp_id)
@@ -249,7 +254,7 @@ class Experiment(object):
         '''Creates the experiment folder'''
         os.makedirs(self.path, exist_ok=True)
 
-    def save(self, folds, X=None, y=None, params=None, models=None, train_idx=None, test_idx=None, y_pred=None, end_logging=True):
+    def save(self, folds=1, X=None, y=None, params=None, models=None, train_idx=None, test_idx=None, y_pred=None, end_logging=True):
         '''Saves models and ouputs
         
         Saves the model results in the output folder
