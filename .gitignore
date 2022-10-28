@@ -6,3 +6,5 @@ trash/
 analysis/
 experiments/
 __pycache__/
+tmp/
+predictions/
