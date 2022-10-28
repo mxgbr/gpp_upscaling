@@ -214,22 +214,25 @@ class Bootstrap(Trainer):
         super().__init__(model, n_folds_tuning=n_folds_tuning, random_state=random_state)
         self.size = size
 
-    def run(self, df, y_col, groups):
+    def run(self, df, y_col, strat=None):
         '''Performs a single bootstrap
 
         Args:
             df (pd.DataFrame): Data frame with variables as columns, incl. target variable
             y_col (str): Name of target variable
-            groups (list): List of group classes
+            strat (list): (pd.Series): Series of classes for stratification in internal training CV
 
         Returns:
-            model: fitted model
+            futures: List of fit_predict futures (contains only fold 0)
+            X (pd.DataFrame): Data frame with variables as columns, without target variables 
+            y (pd.Series): Target variable
         '''
         # predictors
         X = df.drop(y_col, axis=1)
         y = df[y_col]
 
         # create indices for groups
+        groups = df.index.get_level_values(0).values
         _, group_idx = np.unique(np.array(groups), return_inverse=True)
         n_groups = max(group_idx) + 1
         train_size = int(self.size * n_groups)
@@ -239,10 +242,11 @@ class Bootstrap(Trainer):
 
         # get indices where
         train_idx = np.isin(group_idx, boot_group_idx).nonzero()
+        test_idx = (~np.isin(group_idx, boot_group_idx)).nonzero()
 
-        model = self.fit(X, y, train_idx, groups)
+        futures = self.fit_predict(X, y, train_idx, test_idx, groups, strat=strat)
         
-        return model
+        return [futures], X, y
 
     def run_repeated(self):
         '''Performs repeated bootstraps'''
