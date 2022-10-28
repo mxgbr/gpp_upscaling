@@ -401,7 +401,7 @@ def trend(ts):
     Returns:
         Slope in pd.Series
     '''     
-    grp = ts.groupby(['SITE_ID']).apply(lr_model, group_keys=True)
+    grp = ts.groupby('SITE_ID', group_keys=False).apply(lr_model)
     return grp
 
 def across_site_trend(ts):
