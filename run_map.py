@@ -355,10 +355,10 @@ if __name__ == '__main__':
 
     elif map_type == 'annomalies':
         annomalies = map_annomalies(data)
-        create_map(annomalies, os.path.join(out_path, 'msc.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=2, extend='max', cmap='plasma')
+        create_map(annomalies, os.path.join(out_path, 'annomalies.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=2, extend='max', cmap='plasma')
 
     elif map_type == 'std_err':
         std_err = map_err(data)
-        create_map(std_err, os.path.join(out_path, 'msc.pdf'), label='Standard Error [%]', vmin=0, vmax=100, extend='max', cmap='Reds')
+        create_map(std_err, os.path.join(out_path, 'std.pdf'), label='Standard Error [%]', vmin=0, vmax=100, extend='max', cmap='Reds')
 
     print('PYTHON DONE')
