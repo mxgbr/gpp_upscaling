@@ -1,9 +1,9 @@
 # Predicts geospatial GPP
 # Args:
 #    1) Year
-#    2) Month
+#    2) Slurm ID
 #    3) Exp name
-#    4) Model
+#    4) Repetition
 
 import os
 import xarray as xr
@@ -125,30 +125,11 @@ def preproc(ds, exclude_lc=[]):
 
 def load_ds_test():
     '''Dummy data'''
-    #data = pd.read_csv('data/oneflux_monthly_0_05_clean.csv', index_col=['SITE_ID', 'Date'], parse_dates=True)
     data = pd.read_csv('/global/scratch/users/yanghuikang/upscale/data/site/global_sample/global_sample_10000_input_st.csv', parse_dates=True)
 
-    ## TODO no way to properly import geopandas
-    # data = gpd.GeoDataFrame(data, geometry='geometry')
-    # data['x'] = data.geometry.x
-    # data['y'] = data.geometry.y
-
-    # create dummy x and y coordinates
-    #data['x'] = data.groupby('SITE_ID').ngroup()
-    #data['y'] = data.groupby('SITE_ID').ngroup()
-
-    #data.index = data.index.set_names('time', level='Date')
-
-    #data = data.droplevel('SITE_ID')
-    print(data['time'].dtype)
     data['time'] = pd.to_datetime(data['time'])
-    print(data['time'].dtype)
     data = data.set_index(['x', 'y', 'time'])
-    print(data.index.dtypes)
     data = data.loc[(slice(None), slice(None), '2005-05-31'),:]
-    print(data.shape)
-    # data_sel, strat = utils.select_vars(data, variables, strat='MODIS_LC')
-    # data_sel = data_sel.drop('GPP', axis=1)
 
     data = data.drop([col for col in data if col.startswith('MODIS_PFT_')], axis=1)
 
@@ -167,61 +148,6 @@ def predict(df, model):
     h2o.remove(hf)
     return y_pred.as_data_frame()
 
-def load_model(path):
-    '''
-    TODO:
-        deprecated; model should be loaded with the model.load function
-    '''
-    path = os.path.abspath(path)
-    h2o.init(port=54321)
-    return h2o.load_model(path)
-
-def get_exp(exp_path):
-    '''Collects model paths for given exp ID
-
-    Args:
-        exp_id (str): Experiment ID (without number of repetitions)
-        path (str): Path to experiment folder
-
-    Returns:
-        model_paths: List of model paths
-    '''
-    # get all folds
-    folds = glob.glob(os.path.join(exp_path, 'fold_*'))
-
-    model_paths = []
-    for fold in folds:
-        model_paths.append(glob.glob(os.path.join(fold, '*_AutoML_*'))[0])
-
-def get_exp(exp_name, array_id, path='output'):
-    experiments = pd.read_csv(os.path.join(path, 'experiments.csv'), parse_dates=True)
-    experiments = experiments[experiments.Description == exp_name]
-    experiments['array_id'] = experiments['ID'].str.split('_', n=1, expand=True)[1]
-
-    # get requested experiment
-    exp_id = str(experiments[experiments.array_id == array_id].ID.iloc[0])
-    print(experiments[experiments.array_id == array_id].ID)
-    exp_path = os.path.join(path, exp_id)
-    #exp = utils.Experiment(exp_path)
-    #y_eval = exp.load()
-
-    # loop over runs to detemine median model
-    # TODO this might introduce bias in the eror estimation
-    # it would be better to get the models randomly
-    #r2 = []
-    #for ii in range(0, 5):
-    #    test_idx = np.load(os.path.join(exp_path, 'run_' + str(ii), 'test_idx.npy'))
-    #    select = y_eval.iloc[test_idx]
-    #    r2.append(sklearn.metrics.r2_score(select.GT.values, select.Pred.values))
-    #
-    #med_idx = np.argsort(r2)[len(r2)//2]
-
-    med_idx = 0
-
-    # get model path
-    model_path = glob.glob(os.path.join(exp_path, 'run_' + str(med_idx), '*_AutoML_*'))[0]
-
-    return os.path.join(*os.path.normpath(model_path).split(os.path.sep)[-2:]), exp_id
 
 def main():   
     '''Includes executable code
@@ -273,7 +199,7 @@ def main():
     for month in range(1, 13):
         print('Month', month)
 
-        if debug == True:     
+        if debug == False:     
             ds = load_ds(year, month, dataset_dict)
         else:
             ds = load_ds_test()
