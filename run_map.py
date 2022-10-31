@@ -128,6 +128,64 @@ def create_dummy_data():
 
     return dummy_data
 
+def mask(ds, lsmask=True, vegmask=False, sea_val=0, noveg_val=0, set_invalid_0=False, custom=None, custom_val=np.nan):
+    '''Masks dataset with land-sea mask and vegetation mask
+
+    Replaces sea and non-vegetated areas with replacement values
+
+    Args:
+        ds (xarray.Dataset): Dataset with spatial coordinates x, y
+        lsm (bool): Apply lsm
+        veg (bool): Apply veg
+        sea_val (float): Value for masked regions
+        nonveg_val (float): Value for masked regions
+        set_invalid_0 (bool): Use if dataset already contains masked regions
+        custom (xr.Dataset): Mask dataset for custom masking
+        custom_val (float): Value for masked regions
+
+    Returns:
+        xarray dataset
+
+    TODO:
+        implement veg mask
+    '''
+    lon = ds['lon']
+    lat = ds['lat']
+
+    if vegmask == True:
+        # get vegetation mask
+        veg_mask_path = '/global/scratch/users/yanghuikang/upscale/data/processed/utility/mcd12c1_veg_mask'
+        veg_mask = xr.open_zarr(veg_mask_path,consolidated=False)
+        veg_mask = veg_mask.rename({'veg_mask': 'GPP', 'x': 'lon', 'y': 'lat'})
+        veg_mask = veg_mask.interp(coords={'lon': lon, 'lat': lat}, method='nearest')
+
+        # replace masked locations with 0
+        ds = ds.where(veg_mask > 0, noveg_val)
+
+    if lsmask == True:
+        # get land-sea mask
+        lsm_path = '/global/scratch/users/yanghuikang/upscale/data/processed/utility/lsm_1279l4_0.1x0.1.grb_v4_unpack.nc'
+        lsm = xr.open_dataset(lsm_path,engine='netcdf4')
+        lsm = lsm.rename({'longitude':'lon','latitude':'lat'})
+        lsm = lsm.rename({'lsm': 'GPP'})
+        lsm = lsm.squeeze('time').drop_vars(['time'])
+        # adjust x axis from 0-360 to -180-180
+        lsm.coords['lon'] = (lsm.coords['lon'] + 180) % 360 - 180
+        lsm = lsm.sortby(lsm.lon)
+        lsm = lsm.interp(coords={'lon': lon, 'lat': lat}, method='nearest')
+
+        # replace masked locations with 0
+        ds = ds.where(lsm > 0, sea_val)
+
+    if custom is not None:
+        ds = ds.where(custom > 0, custom_val)
+
+    if set_invalid_0 == True:
+        # replaces masked out values with 0, usefull if ds is masked already with nan or neg. values
+        ds = ds.where(ds > 0, 0)
+
+    return ds
+
 def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, extend='neither'):
     '''Creates and saves a map
 
@@ -175,25 +233,87 @@ def map_mean(xds):
     '''
     return xds.mean(dim='rep').mean(dim='time')
 
-def map_msc():
+def map_msc(xds):
     '''Calculates MSC amplitude
-    '''
-    pass
 
-def map_trend():
+    Args:
+        xds (xr.DataSet): Dataset with time dimension
+
+    Returns:
+        msc amplitude
+    '''
+    msc = xds.groupby('time.month').mean()
+    msc_amp = msc.max(dim='month') - msc.min(dim='month')
+   
+    return msc_amp
+
+def map_trend(xds):
     '''Calculates trend
-    '''
-    pass
 
-def map_annomalies():
+    Resamples data to annual time steps for computational reasons, maps significant p values
+
+    Args:
+        xds (xr.Dataset): Dataset with time dimension
+
+    Returns:
+        slopes
+    '''
+    ds_trend = xds.resample(time='1Y').mean(dim='time') * xds.time.dt.days_in_month * 12
+    ds_trend['time'] = ds_trend['time'].dt.year
+
+    def lr(x, y):
+        '''Linear regression, includes p values
+        '''
+        slope, _, _, p, _ = scipy.stats.linregress(x, y)
+        return np.array([slope, p])
+
+    ds_trend = ds_trend.squeeze().chunk(dict(time=-1))
+
+    coefs = xr.apply_ufunc(lr, 
+                ds_trend['time'],
+                ds_trend, 
+                input_core_dims=[["time"], ['time']], 
+                output_core_dims=[["stat"]],
+                output_sizes=dict(stat= 2),
+                vectorize=True,
+                output_dtypes=['float64'],
+                dask='parallelized'
+                )
+
+    coefs = mask(coefs.sel(stat=0), lsmask=False, custom=(coefs.sel(stat=1) < 0.05))
+    coefs.name = 'slope'
+    #coefs['polyfit_coefficients']
+    return coefs
+
+def map_annomalies(xds):
     '''Calculates annomalies
-    '''
-    pass
 
-def map_err():
-    '''Calculates standard error
+    Args:
+        xds (xr.DataSet): Dataset with time dimension
+
+    Returns:
+        std of anomalies
     '''
-    pass
+    iav = xds.groupby('time.month') - xds.groupby('time.month').mean(dim='time')
+    iav_std = iav.std(dim='time')
+    
+    return iav_std
+
+def map_err(xds):
+    '''Calculates standard error
+
+    Args:
+        xds (xr.DataSet): Dataset with time dimension
+
+    Returns:
+        std error of ensemble
+    '''
+    std = xds.std(dim='rep')
+    # relative std
+    std = std * 100 / np.fabs(xds.mean(dim='time'))
+
+    std.name = 'std'
+    return std
 
 if __name__ == '__main__':
     path = sys.argv[1]
@@ -224,5 +344,21 @@ if __name__ == '__main__':
     if map_type == 'mean':
         xds_mean = map_mean(data)
         create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap='plasma', label='GPP [$gC m^{-2} d^{-1}$]', vmax=12, extend='max')
+
+    elif map_type == 'trend':
+        xds_trend = map_trend(data)
+        create_map(xds_trend, os.path.join(out_path, 'trend.pdf'), label='GPP [$gC m^{-2} y^{-1}$]', vmin=-30, vmax=30, extend='both', cmap='bwr')
+
+    elif map_type == 'msc':
+        msc_amp = map_msc(data)
+        create_map(msc_amp, os.path.join(out_path, 'msc.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=12, extend='max', cmap='plasma')
+
+    elif map_type == 'annomalies':
+        annomalies = map_annomalies(data)
+        create_map(annomalies, os.path.join(out_path, 'msc.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=2, extend='max', cmap='plasma')
+
+    elif map_type == 'std_err':
+        std_err = map_err(data)
+        create_map(std_err, os.path.join(out_path, 'msc.pdf'), label='Standard Error [%]', vmin=0, vmax=100, extend='max', cmap='Reds')
 
     print('PYTHON DONE')
