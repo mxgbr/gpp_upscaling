@@ -60,9 +60,8 @@ def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
         cat.append('MODIS_LC')
 
     elif var_set == 'rs_meteo':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
-                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'BESS-PAR', 'BESS-RSDN', 
-                     'BESS-PARdiff', 'CSIF-SIFdaily', 'CSIF-SIFinst']]
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
+                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'total_precipitation', 'temperature_2m', 'vpd', 'prcp-lag3']]
         cat.append('MODIS_LC')
 
     elif setting == 'model0':
