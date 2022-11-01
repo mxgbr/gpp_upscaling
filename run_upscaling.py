@@ -21,7 +21,7 @@ debug = False
 
 pft_replacements = dict(zip(
     np.arange(1, 18),
-    ['ENF', 'EBF', 'DNF', 'DBF', 'MF', 'SH', 'SH', 'SAV', 'SAV', 'GRA', 'WET', 'CRO', 'URB', 'CVM', 'SNO', 'BSV', 'WAT']   
+    ['ENF', 'EBF', 'DNF', 'DBF', 'MF', 'SH', 'SH', 'SAV', 'SAV', 'GRA', 'WET', 'CRO', 'URB', 'CVM', 'SNO', 'BAR', 'WAT']   
 ))
 
 def load_ds(year, month, dataset_dict):
@@ -95,6 +95,9 @@ def preproc(ds, exclude_lc=[]):
     
     Returns:
         processed dataset
+
+    TODO:
+        what if MODIS_LC not available?
     '''
     # rm unnecessary dimensions and variables
     ds = ds.squeeze(dim='time',drop=True)
@@ -108,15 +111,9 @@ def preproc(ds, exclude_lc=[]):
     #if 'b1' in ds.columns:
     #    ds = ds.dropna(how='all', subset=dataset_dict['MCD43C4v006'])
 
-    ds = ds[ds.MODIS_LC.isin(exclude_lc + [np.nan])]
-
-    # Remove coordinates
-    ##ds = ds[list(dataset_dict.values())]
-
-    # One-hot encode PFTs
-    ## Uncomment for real data!! 
     if 'MODIS_LC' in ds.columns: 
         ds['MODIS_LC'] = ds['MODIS_LC'].map(pft_replacements)
+        ds = ds[~ds.MODIS_LC.isin(exclude_lc + [np.nan])]
         ds = pd.get_dummies(ds, columns=['MODIS_LC'])
 
     # remove inf values
@@ -132,8 +129,6 @@ def load_ds_test():
     data = data.loc[(slice(None), slice(None), '2005-05-31'),:]
 
     data = data.drop([col for col in data if col.startswith('MODIS_PFT_')], axis=1)
-
-    print(data.shape)
 
     return data.to_xarray()
 
@@ -175,7 +170,7 @@ def main():
     rep = int(sys.argv[4])
     print(year)
 
-    exp = utils.Experiment(exp_id=slurm_id, suffix=exp_id + '_' + str(rep), output_dir='predictions/' + str(year), logging=True, prepend_date=False)
+    exp = utils.Experiment(exp_id=slurm_id, suffix=exp_id + '_' + str(rep), output_dir='predictions/' + str(year), logging=False, prepend_date=False)
 
     # load parameters
     training_exp_path = os.path.join('experiments', exp.suffix)
@@ -206,7 +201,7 @@ def main():
 
         date = pd.to_datetime(ds['time'][0].to_numpy())
 
-        ds = preproc(ds)
+        ds = preproc(ds, exclude_lc=['WAT'])
 
         # predict
         idx = ds.index
