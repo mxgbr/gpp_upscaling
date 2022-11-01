@@ -24,6 +24,7 @@ import warnings
 
 import sys
 import os
+import pickle
 
 def read_dask(path, date_range, pred_ids, variables=['GPP'], dims=('lat', 'lon', 'time'), freq='1M'):
     '''Reads zarr or netcdf files
@@ -186,7 +187,7 @@ def mask(ds, lsmask=True, vegmask=False, sea_val=0, noveg_val=0, set_invalid_0=F
 
     return ds
 
-def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, extend='neither'):
+def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, extend='neither', pickle_fig=True, rasterized=True):
     '''Creates and saves a map
 
     Args:
@@ -197,9 +198,7 @@ def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, ext
         vmax (float): Max value
         extend (str): Extension arrow for colorbar
         out_path (str): Path incl file name for saving the file
-
-    Returns:
-
+        pickle_fig (bool): Indicator if fig should be pickled additionally
     '''
     print(xds)
     xds = xds.to_array().squeeze().transpose()
@@ -213,13 +212,16 @@ def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, ext
     ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False, zorder=0)
     ax.coastlines(zorder=1)
 
-    plt_im = xds.plot.pcolormesh(ax=ax, cmap=cmap, transform=data_crs, add_colorbar=False, vmin=vmin, vmax=vmax)
+    plt_im = xds.plot.pcolormesh(ax=ax, cmap=cmap, transform=data_crs, add_colorbar=False, vmin=vmin, vmax=vmax, rasterized=True)
 
     cbar = fig.colorbar(plt_im, location='bottom',fraction=0.04, pad=0.045, extend=extend)
     cbar.set_label(label)
 
     plt.title('')
     plt.tight_layout()
+    if pickle_fig == True:
+        pickle.dump(fig, open(out_path + '.pkl', 'wb'))
+
     plt.savefig(out_path)
 
 def map_mean(xds):
