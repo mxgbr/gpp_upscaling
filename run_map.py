@@ -327,7 +327,7 @@ if __name__ == '__main__':
     map_type = sys.argv[5]
 
     # 30 repetitions
-    repetitions = range(1, 3)
+    repetitions = range(0, 2)
     pred_ids = [pred_id + '_' + str(ii) for ii in repetitions]
 
     # read data
@@ -335,7 +335,7 @@ if __name__ == '__main__':
     #data = create_dummy_data()
 
     # mask data
-    ## TODO
+    data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
 
     # create saving path
     out_path = os.path.join('analysis/maps/', pred_id, date_start.strftime('%m%Y') + '-' + date_end.strftime('%m%Y'))
@@ -345,7 +345,7 @@ if __name__ == '__main__':
     # run computation
     if map_type == 'mean':
         xds_mean = map_mean(data)
-        create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap='plasma', label='GPP [$gC m^{-2} d^{-1}$]', vmax=12, extend='max')
+        create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap=analysis.cmap_gpp_1, label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=12, extend='max')
 
     elif map_type == 'trend':
         xds_trend = map_trend(data)
