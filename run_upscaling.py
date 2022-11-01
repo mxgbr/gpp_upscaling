@@ -107,9 +107,6 @@ def preproc(ds, exclude_lc=[]):
     
     # convert to dask df
     ds = ds.to_dataframe()
-    ## TODO is that responsible for land/sea masking?
-    #if 'b1' in ds.columns:
-    #    ds = ds.dropna(how='all', subset=dataset_dict['MCD43C4v006'])
 
     if 'MODIS_LC' in ds.columns: 
         ds['MODIS_LC'] = ds['MODIS_LC'].map(pft_replacements)
@@ -147,10 +144,6 @@ def predict(df, model):
 def main():   
     '''Includes executable code
     ''' 
-    ## TODO: needed?
-    variables = ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
-             'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET']
-
     # list of datasets and variables
     dataset_dict = {
         'ALEXI':['ET'],
