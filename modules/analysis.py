@@ -1,4 +1,5 @@
 from matplotlib import cm
+import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 import sklearn
@@ -30,6 +31,18 @@ lc_colors = {
     'REST': '#46237A'
 }
 sns.set_palette(sns.color_palette(list(lc_colors.values())))
+
+cmap_gpp_1 = matplotlib.colors.LinearSegmentedColormap.from_list('gpp_1', [
+    (0, '#3185FC'),
+    (0.4, '#1B998B'),
+    (0.9, '#FFBA08')
+])
+
+cmap_gpp_2 = matplotlib.colors.LinearSegmentedColormap.from_list('gpp_2', [
+    (0, '#1B998B'),
+    (0.5, '#FFFFFF'),
+    (1, '#FFBA08')
+])
 
 # default chart layout
 plt.rcParams['figure.figsize'] = [9, 6]
