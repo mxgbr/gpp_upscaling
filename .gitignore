@@ -8,3 +8,4 @@ experiments/
 __pycache__/
 tmp/
 predictions/
+dask-worker-space/

@@ -12,8 +12,10 @@ import cartopy.crs as ccrs
 
 import xarray as xr
 import dask
+from dask.distributed import Client
 import numpy as np
 import pandas as pd
+import scipy
 
 import modules.analysis as analysis
 
@@ -233,7 +235,7 @@ def map_mean(xds):
     Returns:
         mean
     '''
-    return xds.mean(dim='rep').mean(dim='time')
+    return xds.mean(dim=['rep', 'time'])
 
 def map_msc(xds):
     '''Calculates MSC amplitude
@@ -244,8 +246,12 @@ def map_msc(xds):
     Returns:
         msc amplitude
     '''
+    # calc mean ts
+    xds = xds.mean(dim='rep')
+
+    # calc amplitude
     msc = xds.groupby('time.month').mean()
-    msc_amp = msc.max(dim='month') - msc.min(dim='month')
+    msc_amp = (msc.max(dim='month') - msc.min(dim='month')) / 2
    
     return msc_amp
 
@@ -260,6 +266,9 @@ def map_trend(xds):
     Returns:
         slopes
     '''
+    # calc mean ts
+    xds = xds.mean(dim='rep')
+
     ds_trend = xds.resample(time='1Y').mean(dim='time') * xds.time.dt.days_in_month * 12
     ds_trend['time'] = ds_trend['time'].dt.year
 
@@ -283,8 +292,9 @@ def map_trend(xds):
                 )
 
     coefs = mask(coefs.sel(stat=0), lsmask=False, custom=(coefs.sel(stat=1) < 0.05))
-    coefs.name = 'slope'
-    #coefs['polyfit_coefficients']
+    #coefs.name = 'slope'
+    print(coefs)
+
     return coefs
 
 def map_annomalies(xds):
@@ -296,7 +306,10 @@ def map_annomalies(xds):
     Returns:
         std of anomalies
     '''
-    iav = xds.groupby('time.month') - xds.groupby('time.month').mean(dim='time')
+    # calc mean ts
+    iav = xds.mean(dim='rep')
+
+    iav = iav.groupby('time.month') - iav.groupby('time.month').mean(dim='time')
     iav_std = iav.std(dim='time')
     
     return iav_std
@@ -310,11 +323,11 @@ def map_err(xds):
     Returns:
         std error of ensemble
     '''
-    std = xds.std(dim='rep')
+    std = xds.std(dim='rep').mean(dim='time')
     # relative std
-    std = std * 100 / np.fabs(xds.mean(dim='time'))
+    std = std * 100 / np.fabs(xds.mean(dim=['time', 'rep']))
 
-    std.name = 'std'
+    #std.name = 'std'
     return std
 
 if __name__ == '__main__':
@@ -326,8 +339,11 @@ if __name__ == '__main__':
     date_end = datetime.strptime(sys.argv[4], '%m-%Y')
     map_type = sys.argv[5]
 
+    # dask
+    client = Client()
+
     # 30 repetitions
-    repetitions = range(0, 2)
+    repetitions = range(0, 30)
     pred_ids = [pred_id + '_' + str(ii) for ii in repetitions]
 
     # read data
@@ -342,25 +358,38 @@ if __name__ == '__main__':
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
 
-    # run computation
-    if map_type == 'mean':
+    def dask_mean(data):
         xds_mean = map_mean(data)
-        create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap=analysis.cmap_gpp_1, label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=12, extend='max')
+        create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap=analysis.cmap_gpp_1, label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=11, extend='max')
 
-    elif map_type == 'trend':
+    def dask_trend(data):
         xds_trend = map_trend(data)
-        create_map(xds_trend, os.path.join(out_path, 'trend.pdf'), label='GPP [$gC m^{-2} y^{-1}$]', vmin=-30, vmax=30, extend='both', cmap='bwr')
+        create_map(xds_trend, os.path.join(out_path, 'trend.pdf'), label='GPP [$gC m^{-2} y^{-1}$]', vmin=-20, vmax=20, extend='both', cmap=analysis.cmap_gpp_2)
 
-    elif map_type == 'msc':
+    def dask_msc(data):
         msc_amp = map_msc(data)
-        create_map(msc_amp, os.path.join(out_path, 'msc.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=12, extend='max', cmap='plasma')
+        create_map(msc_amp, os.path.join(out_path, 'msc.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=6, extend='max', cmap=analysis.cmap_gpp_1)
 
-    elif map_type == 'annomalies':
+    def dask_annomalies(data):
         annomalies = map_annomalies(data)
-        create_map(annomalies, os.path.join(out_path, 'annomalies.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=2, extend='max', cmap='plasma')
+        create_map(annomalies, os.path.join(out_path, 'annomalies.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=1.5, extend='max', cmap=analysis.cmap_gpp_1)
 
-    elif map_type == 'std_err':
+    def dask_err(data):
         std_err = map_err(data)
-        create_map(std_err, os.path.join(out_path, 'std.pdf'), label='Standard Error [%]', vmin=0, vmax=100, extend='max', cmap='Reds')
+        print(std_err)
+        create_map(std_err, os.path.join(out_path, 'std.pdf'), label='Standard Error [%]', vmin=0, vmax=100, extend='max', cmap=analysis.cmap_gpp_3)
 
+    # run computation
+    #delayed_objs = [
+        #dask.delayed(dask_mean)(data),
+        #dask.delayed(dask_msc)(data),
+        #dask.delayed(dask_annomalies)(data),
+        #dask.delayed(dask_trend)(data),
+        #dask.delayed(dask_err)(data)
+    #]
+
+    dask_annomalies(data)
+
+    #[x.compute() for x in delayed_objs]
+        
     print('PYTHON DONE')
