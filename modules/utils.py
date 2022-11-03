@@ -47,7 +47,7 @@ def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
         df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR']]
 
     elif var_set == 'rs_min_vi':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI']]
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI']]
 
     elif var_set == 'rs':
         df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
