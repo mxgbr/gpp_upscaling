@@ -49,8 +49,11 @@ class H2o(BaseModel):
         self.leaderboard.to_csv(os.path.join(path, 'leaderboard.csv'))
 
     @staticmethod
-    def load(path):
+    def load(path, init=True):
         path = glob.glob(os.path.join(path, '*_AutoML_*'))[0]
         path = os.path.abspath(path)
-        h2o.init(port=54321)
+
+        if init:
+            h2o.init(port=54321)
+            
         return h2o.load_model(path)
