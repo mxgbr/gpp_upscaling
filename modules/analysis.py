@@ -35,13 +35,20 @@ sns.set_palette(sns.color_palette(list(lc_colors.values())))
 cmap_gpp_1 = matplotlib.colors.LinearSegmentedColormap.from_list('gpp_1', [
     (0, '#3185FC'),
     (0.4, '#1B998B'),
-    (0.9, '#FFBA08')
+    (0.9, '#FFBA08'),
+    (1, '#FFBA08')
 ])
 
 cmap_gpp_2 = matplotlib.colors.LinearSegmentedColormap.from_list('gpp_2', [
-    (0, '#1B998B'),
+    (0, '#FFBA08'),
     (0.5, '#FFFFFF'),
-    (1, '#FFBA08')
+    (1, '#1B998B')
+])
+
+cmap_gpp_3 = matplotlib.colors.LinearSegmentedColormap.from_list('gpp_3', [
+    (0, '#FFFFFF'),
+    (0.9, '#D00000'),
+    (1, '#D00000')
 ])
 
 # default chart layout
@@ -113,7 +120,7 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
         metric (str): Name of metric column
     '''
     ax = sns.violinplot(data=data, hue=var_set, x=model, y=metric, showfliers=True, inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y=metric, dodge=True, palette='dark:black', legend=False)
+    #sns.swarmplot(data=data, hue=var_set, x=model, y=metric, dodge=True, palette='dark:black', legend=False)
     ax.set_ylabel('$r^2$')
     ax.set_title('Overall')
     plt.tight_layout()
@@ -121,16 +128,16 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
 
     fig, ax = plt.subplots(2, 2, figsize=(18, 12))
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_trend', ax=ax[0,0], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_trend', dodge=True, palette='dark:black', ax=ax[0,0], legend=False)
+    #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_trend', dodge=True, palette='dark:black', ax=ax[0,0], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_sites', ax=ax[0,1], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_sites', dodge=True, palette='dark:black', ax=ax[0,1], legend=False)
+    #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_sites', dodge=True, palette='dark:black', ax=ax[0,1], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_msc', ax=ax[1,0], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_msc', dodge=True, palette='dark:black', ax=ax[1,0], legend=False)
+    #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_msc', dodge=True, palette='dark:black', ax=ax[1,0], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_anomalies', ax=ax[1,1], inner="quartile", **kwargs)
-    sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', dodge=True, palette='dark:black', ax=ax[1,1], legend=False)
+    #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', dodge=True, palette='dark:black', ax=ax[1,1], legend=False)
 
     ax[0, 0].set_title('Trend')
     ax[0, 1].set_title('Across-site Variability')
