@@ -65,11 +65,19 @@ if __name__ == "__main__":
     elif params['model'] == 'h2o':
         from models.h2o import H2o as ModelWrapper
 
+    elif params['model'] == 'autosklearn':
+        from models.autosklearn import AutoSklearn as ModelWrapper
+
+    elif params['model'] == 'autogluon':
+        from models.autogluon import AutoGluon as ModelWrapper
+
     else:
         raise AttributeError('Invalid model choice')  
 
     # load data
     y_var = 'GPP_NT_CUT_REF'
+    # data/ec/data_monthly_0_05_2001-2020_v1.csv
+    # data/ec/data_monthly_500_v4.csv
     data = pd.read_csv('data/ec/data_monthly_0_05_2001-2020_v1.csv', index_col=['SITE_ID', 'Date'], parse_dates=True) 
     data_sel, target = utils.preprocess(data, params['variable_set'], target=[y_var,'MODIS_LC'], cat=['MODIS_LC'])
     strat = target['MODIS_LC']
