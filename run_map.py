@@ -12,7 +12,7 @@ import cartopy.crs as ccrs
 
 import xarray as xr
 import dask
-from dask.distributed import Client
+from dask.distributed import Client, LocalCluster
 import numpy as np
 import pandas as pd
 import scipy
@@ -189,7 +189,7 @@ def mask(ds, lsmask=True, vegmask=False, sea_val=0, noveg_val=0, set_invalid_0=F
 
     return ds
 
-def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, extend='neither', pickle_fig=True, rasterized=True):
+def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, extend='neither', pickle_fig=True, rasterized=True, dataset=True):
     '''Creates and saves a map
 
     Args:
@@ -202,9 +202,8 @@ def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, ext
         out_path (str): Path incl file name for saving the file
         pickle_fig (bool): Indicator if fig should be pickled additionally
     '''
-    print(xds)
-    xds = xds.to_array().squeeze().transpose()
-    print(xds)
+    if dataset:
+        xds = xds.to_array().squeeze().transpose()
 
     fig = plt.figure(figsize=(9, 7))
     crs = ccrs.PlateCarree()
@@ -223,6 +222,7 @@ def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, ext
     plt.tight_layout()
     if pickle_fig == True:
         pickle.dump(fig, open(out_path + '.pkl', 'wb'))
+        pickle.dump(xds, open(out_path + '_data.pkl', 'wb'))
 
     plt.savefig(out_path)
 
@@ -314,7 +314,7 @@ def map_annomalies(xds):
     
     return iav_std
 
-def map_err(xds):
+def map_err(xds, abs=True):
     '''Calculates standard error
 
     Args:
@@ -323,12 +323,17 @@ def map_err(xds):
     Returns:
         std error of ensemble
     '''
-    std = xds.std(dim='rep').mean(dim='time')
-    # relative std
-    std = std * 100 / np.fabs(xds.mean(dim=['time', 'rep']))
+    # Standard Error sem = std / sqrt(N) 
+    std_err = xds.std(dim='rep') / (xds.count(dim='rep')**0.5)
+    std_err = std_err.mean(dim='time')
 
-    #std.name = 'std'
-    return std
+    ##variance = xds.var(dim='rep').mean(dim='time')
+    ##std = variance ** 0.5
+
+    if abs == False:
+        std_err = std_err * 100 / np.fabs(xds.mean(dim=['rep', 'time']))
+
+    return std_err
 
 if __name__ == '__main__':
     path = sys.argv[1]
@@ -340,7 +345,8 @@ if __name__ == '__main__':
     map_type = sys.argv[5]
 
     # dask
-    client = Client()
+    #cluster = LocalCluster()
+    #client = Client(cluster)
 
     # 30 repetitions
     repetitions = range(0, 30)
@@ -350,34 +356,39 @@ if __name__ == '__main__':
     data = read_dask(path, (date_start, date_end), pred_ids, dims=('y', 'x', 'time'))
     #data = create_dummy_data()
 
-    # mask data
-    data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
-
     # create saving path
     out_path = os.path.join('analysis/maps/', pred_id, date_start.strftime('%m%Y') + '-' + date_end.strftime('%m%Y'))
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
 
     def dask_mean(data):
+        data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         xds_mean = map_mean(data)
-        create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap=analysis.cmap_gpp_1, label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=11, extend='max')
+        create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap=analysis.cmap_gpp_1, label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=10, extend='max')
 
     def dask_trend(data):
+        data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         xds_trend = map_trend(data)
         create_map(xds_trend, os.path.join(out_path, 'trend.pdf'), label='GPP [$gC m^{-2} y^{-1}$]', vmin=-20, vmax=20, extend='both', cmap=analysis.cmap_gpp_2)
 
     def dask_msc(data):
+        data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         msc_amp = map_msc(data)
         create_map(msc_amp, os.path.join(out_path, 'msc.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=6, extend='max', cmap=analysis.cmap_gpp_1)
 
     def dask_annomalies(data):
+        data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         annomalies = map_annomalies(data)
         create_map(annomalies, os.path.join(out_path, 'annomalies.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=1.5, extend='max', cmap=analysis.cmap_gpp_1)
 
+    def dask_err_abs(data):
+        std_err = map_err(data, abs=True)
+        create_map(std_err, os.path.join(out_path, 'std_err_abs.pdf'), label='Standard Error [$gC m^{-2} d^{-1}$]', vmin=0, vmax=0.7, extend='max', cmap=analysis.cmap_gpp_3)
+
     def dask_err(data):
-        std_err = map_err(data)
-        print(std_err)
-        create_map(std_err, os.path.join(out_path, 'std.pdf'), label='Standard Error [%]', vmin=0, vmax=100, extend='max', cmap=analysis.cmap_gpp_3)
+        std_err = map_err(data, abs=False)
+        create_map(std_err, os.path.join(out_path, 'std_err.pdf'), label='Standard Error [%]', vmin=0, vmax=30, extend='max', cmap=analysis.cmap_gpp_3)
+
 
     # run computation
     #delayed_objs = [
@@ -388,7 +399,7 @@ if __name__ == '__main__':
         #dask.delayed(dask_err)(data)
     #]
 
-    dask_annomalies(data)
+    dask_err(data)
 
     #[x.compute() for x in delayed_objs]
         
