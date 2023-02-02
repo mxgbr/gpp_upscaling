@@ -5,7 +5,7 @@ import numpy as np
 
 class AutoSklearn(BaseModel):
     def __init__(self, 
-                 time, 
+                 time=60, 
                  task_time_limit=None, 
                  scoring='mean_squared_error',
                  memory_limit=3072,
