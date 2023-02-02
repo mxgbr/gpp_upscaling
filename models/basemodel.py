@@ -78,7 +78,7 @@ class BaseModel(object):
         Returns:
             BaseModel object
         '''
-        model = pickle.load(open(path, 'model'), 'rb')
+        model = pickle.load(open(os.path.join(path, 'model'), 'rb'))
 
         model_wrapper = cls(**params)
         model_wrapper.model = model
