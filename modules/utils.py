@@ -49,9 +49,22 @@ def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
     elif var_set == 'rs_min_vi':
         df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI']]
 
+    elif var_set == 'rs_min_yr':
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR']]
+        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
+
+    elif var_set == 'rs_min_sif':
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR', 'CSIF-SIFdaily', 'CSIF-SIFinst']]
+
     elif var_set == 'rs':
         df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
                      'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET']]
+        cat.append('MODIS_LC')
+
+    elif var_set == 'rs_yr':
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
+                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET']]
+        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
         cat.append('MODIS_LC')
 
     elif var_set == 'rs_vi':
@@ -62,6 +75,12 @@ def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
     elif var_set == 'rs_meteo':
         df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
                      'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'total_precipitation', 'temperature_2m', 'vpd', 'prcp-lag3']]
+        cat.append('MODIS_LC')
+
+    elif var_set == 'rs_meteo_yr':
+        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
+                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'total_precipitation', 'temperature_2m', 'vpd', 'prcp-lag3']]
+        df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
         cat.append('MODIS_LC')
 
     elif setting == 'model0':
