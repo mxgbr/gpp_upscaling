@@ -5,17 +5,19 @@
 #    3) Exp name
 #    4) Repetition
 
+## TODO: This needs a possibility to read the var set name and select the relevant columns, also in the right order!!
+
 import os
 import xarray as xr
 import pandas as pd
 import numpy as np
-import h2o
+#import h2o
 from pandas.tseries.offsets import MonthEnd
 import sys
 import modules.utils as utils
 import sklearn
 import glob
-from dask_ml.preprocessing import DummyEncoder
+#from dask_ml.preprocessing import DummyEncoder
 
 debug = False
 
@@ -130,15 +132,19 @@ def load_ds_test():
     return data.to_xarray()
 
 def predict(df, model):
+    '''
+    TODO: remove, deprecated
+    '''
     # get pandas dtypes and create mapping dict
     mask = [(np.issubdtype(x, np.floating), np.issubdtype(x, np.integer))for x in df.dtypes]
     types = np.select(list(zip(*mask)), ['real', 'int'], default=np.nan)
     mapping = dict(zip(df.columns[types != 'nan'], types[types != 'nan']))
 
-    hf = h2o.H2OFrame(df, column_types=mapping)
+    #hf = h2o.H2OFrame(df, column_types=mapping)
     y_pred = model.predict(hf)
-    h2o.remove(hf)
-    return y_pred.as_data_frame()
+    #h2o.remove(hf)
+    #y_pred = y_pred.as_data_frame()
+    return y_pred
 
 
 def main():   
@@ -179,6 +185,9 @@ def main():
     elif params['model'] == 'h2o':
         from models.h2o import H2o as ModelWrapper
 
+    elif params['model'] == 'autosklearn':
+        from models.autosklearn import AutoSklearn as ModelWrapper
+
     else:
         raise AttributeError('Invalid model choice') 
 
@@ -199,7 +208,9 @@ def main():
         # predict
         idx = ds.index
         # deletes ds
-        y_pred = predict(ds, model)
+        #y_pred = predict(ds, model)
+        print(list(ds.columns))
+        y_pred = model.predict(ds)
         y_pred.index = idx
         y_pred['time'] = date
         y_pred = y_pred.set_index('time', append=True)

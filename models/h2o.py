@@ -4,6 +4,7 @@ from h2o.automl import H2OAutoML
 import os
 import re
 import glob
+import numpy as np
 
 class H2o(BaseModel):
     def __init__(self, 
@@ -38,8 +39,19 @@ class H2o(BaseModel):
         self.model = h2o.get_model(model.leader.model_id)
 
     def predict(self, X):
-        hf_test = h2o.H2OFrame(X)
-        return self.model.predict(hf_test).as_data_frame()
+        '''
+        Args:
+            X (pd.DataFrame)
+        '''
+        # get pandas dtypes and create mapping dict
+        mask = [(np.issubdtype(x, np.floating), np.issubdtype(x, np.integer))for x in X.dtypes]
+        types = np.select(list(zip(*mask)), ['real', 'int'], default=np.nan)
+        mapping = dict(zip(X.columns[types != 'nan'], types[types != 'nan']))
+
+        hf = h2o.H2OFrame(X)
+        y_pred = self.model.predict(hf).as_data_frame()
+        h2o.remove(hf)
+        return 
 
     def save(self, path):
         # save model
