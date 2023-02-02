@@ -65,6 +65,9 @@ if __name__ == "__main__":
     elif params['model'] == 'h2o':
         from models.h2o import H2o as ModelWrapper
 
+    elif params['model'] == 'autosklearn':
+        from models.autosklearn import AutoSklearn as ModelWrapper
+
     else:
         raise AttributeError('Invalid model choice')  
 
