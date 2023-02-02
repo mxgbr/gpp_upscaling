@@ -109,7 +109,7 @@ def eval_metrics(exp_id, exp_dir='experiments/', out_path=None, min_months=0):
 
     return final_df
 
-def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
+def plt_model_comparison(data, out_dir, var_set, model, metric, ylims=[], **kwargs):
     '''Creates violin plot for models and variables
 
     Args:
@@ -118,9 +118,15 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
         var_set (str): Name of var set column
         model (str): Name of model column
         metric (str): Name of metric column
+        ylims (list): List of tuples for y limits (ymin, ymax), set none if auto
     '''
     ax = sns.violinplot(data=data, hue=var_set, x=model, y=metric, showfliers=True, inner="quartile", **kwargs)
     #sns.swarmplot(data=data, hue=var_set, x=model, y=metric, dodge=True, palette='dark:black', legend=False)
+
+    if len(ylims) > 0:
+        if ylims[0] is not None:
+            ax.set_ylim(*ylims[0])
+
     ax.set_ylabel('$r^2$')
     ax.set_title('Overall')
     plt.tight_layout()
@@ -138,6 +144,11 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, **kwargs):
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_anomalies', ax=ax[1,1], inner="quartile", **kwargs)
     #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', dodge=True, palette='dark:black', ax=ax[1,1], legend=False)
+
+    if len(ylims) > 1:
+        for idx, ax_item in enumerate(ax.flatten()):
+            if ylims[idx+1] is not None:
+                ax_item.set_ylim(*ylims[idx+1])
 
     ax[0, 0].set_title('Trend')
     ax[0, 1].set_title('Across-site Variability')
