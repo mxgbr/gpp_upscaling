@@ -1,5 +1,6 @@
 import pickle
 import os
+import warnings
 
 class BaseModel(object):
     '''The BaseModel object contains the basic structure for models in the CV
@@ -7,14 +8,15 @@ class BaseModel(object):
     Attributes:
         model: Instance of the trained model
         id (int): Unique identifier
+        from_file (bool): Indicates if loaded model
+        vars (list): List of column names from training
 
-    TODO:
-        save and load functions?
     '''
     def __init__(self):
         self.model = None
         self.id = None
         self.from_file = False
+        self.vars = []
 
     def preproc(self, df, y_col, strat):
         '''Placeholder for model-specific pre-processing
@@ -43,16 +45,28 @@ class BaseModel(object):
             X (pd.DataFrame): Dataframe with predictor variables
             y (pd.Series): Series with target variable
             oof_idx (pd.Series): Index groups, can be used by the model for cv tuning. Enables stratified and grouped train/val splits, e.g., with PredefinedSplit.
+        
+        Returns:
+            X, y
         '''
-        pass
+        self.vars = X.columns
+
+        return X, y
 
     def predict(self, X):
         '''Predicts from the fitted model
         
         Args:
             X (pd.DataFrame): Frame in same structure as for fitting
+
+        Returns:
+            X
         '''
-        pass
+        if len(self.vars) == 0:
+            warnings.warn("No column headers were specified during the training process.")
+            return X
+
+        return X[self.vars]
 
     def save(self, path):
         '''Saves the model
@@ -85,3 +99,31 @@ class BaseModel(object):
         model_wrapper.from_file = True
 
         return model_wrapper
+
+    def save_(self, path):
+        '''Saves the model
+
+        Pickles by default, should be overwritten if custom saving methods applied
+
+        Args:
+            path (str): Saving directory
+        '''
+        with open(os.path.join(path, 'model'), 'ab') as outfile:
+            pickle.dump(self.__dict__, outfile)
+
+    @classmethod
+    def load_(cls, path):
+        '''Loads a model
+
+        Model loaded is of type BaseModel with default attributes and the loaded model in the model attribute
+
+        Args:
+            path (str): Loading directory
+
+        Returns:
+            BaseModel object
+        '''
+        model = pickle.load(open(os.path.join(path, 'model'), 'rb'))
+        model.from_file = True
+
+        return model
