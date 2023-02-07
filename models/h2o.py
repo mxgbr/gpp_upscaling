@@ -43,15 +43,17 @@ class H2o(BaseModel):
         Args:
             X (pd.DataFrame)
         '''
+        X = super().predict(X)
+
         # get pandas dtypes and create mapping dict
         mask = [(np.issubdtype(x, np.floating), np.issubdtype(x, np.integer))for x in X.dtypes]
         types = np.select(list(zip(*mask)), ['real', 'int'], default=np.nan)
         mapping = dict(zip(X.columns[types != 'nan'], types[types != 'nan']))
 
-        hf = h2o.H2OFrame(X)
+        hf = h2o.H2OFrame(X, column_types=mapping)
         y_pred = self.model.predict(hf).as_data_frame()
         h2o.remove(hf)
-        return 
+        return y_pred
 
     def save(self, path):
         # save model
@@ -60,12 +62,16 @@ class H2o(BaseModel):
         # save leaderboard
         self.leaderboard.to_csv(os.path.join(path, 'leaderboard.csv'))
 
-    @staticmethod
-    def load(path, init=True):
+    @classmethod
+    def load(cls, path, init=True, **params):
         path = glob.glob(os.path.join(path, '*_AutoML_*'))[0]
         path = os.path.abspath(path)
 
         if init:
             h2o.init(port=54321)
+
+        model_wrapper = cls(**params)
+        model_wrapper.model = h2o.load_model(path)
+        model_wrapper.from_file = True
             
-        return h2o.load_model(path)
+        return model_wrapper
