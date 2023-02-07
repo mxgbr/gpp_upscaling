@@ -19,6 +19,34 @@ PFT_REPLACEMENTS = pd.DataFrame({
     'Site': ['ENF', 'EBF', 'DNF', 'DBF', 'MF', 'CSH', 'OSH', 'WSA', 'SAV', 'GRA', 'WET', 'CRO', 'URB', 'CVM', 'SNO', 'BSV', 'WAT'],   
 })
 
+var_sets = {
+    'rs_min': ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR'],
+    'rs_min_vi': ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI'],
+    'rs_min_yr': ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR', 'year'],
+    'rs_min_sif': ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR', 'CSIF-SIFdaily', 'CSIF-SIFinst'],
+    'rs': ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
+           'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'MODIS_LC'],
+    'rs_yr': ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
+              'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'year', 'MODIS_LC'],
+    'rs_vi': ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
+              'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'MODIS_LC'],
+    'rs_meteo': ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
+                 'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 
+                 'total_precipitation', 'temperature_2m', 'vpd', 'prcp-lag3', 'MODIS_LC'],
+    'rs_meteo_yr': ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
+                    'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 
+                    'total_precipitation', 'temperature_2m', 'vpd', 'prcp-lag3', 'year', 'MODIS_LC'],
+    'model0': ['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
+               'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
+               'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC'],
+    'model1': ['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
+               'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
+               'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC', 'year'],
+    'model2': ['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
+               'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
+               'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC', 'CO2_concentration', 'year']
+}
+
 def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
     '''Performs standardized preprocessing tasks
 
@@ -44,64 +72,53 @@ def preprocess(df, var_set, cat=[], target=None, rm_all_nans=True):
 
     elif var_set == 'rs_min':
         # see https://daac.ornl.gov/VEGETATION/guides/FluxSat_GPP_FPAR.html
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR']]
+        df_out = df_out[var_sets['rs_min']]
 
     elif var_set == 'rs_min_vi':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI']]
+        df_out = df_out[var_sets['rs_min_vi']]
 
     elif var_set == 'rs_min_yr':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR']]
+        df_out = df_out[var_sets['rs_min_yr'][:-1]]
         df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
 
     elif var_set == 'rs_min_sif':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'BESS-PAR', 'CSIF-SIFdaily', 'CSIF-SIFinst']]
+        df_out = df_out[var_sets['rs_min_sif']]
 
     elif var_set == 'rs':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
-                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET']]
+        df_out = df_out[var_sets['rs'][:-1]]
         cat.append('MODIS_LC')
 
     elif var_set == 'rs_yr':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
-                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET']]
+        df_out = df_out[var_sets['rs_yr'][:-2]]
         df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
         cat.append('MODIS_LC')
 
     elif var_set == 'rs_vi':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'NDVI', 'EVI', 'GCI', 'NDWI', 'NIRv', 'kNDVI', 'LST_Day', 'LST_Night', 'Lai', 
-                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET']]
+        df_out = df_out[var_sets['rs_vi'][:-1]]
         cat.append('MODIS_LC')
 
     elif var_set == 'rs_meteo':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
-                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'total_precipitation', 'temperature_2m', 'vpd', 'prcp-lag3']]
+        df_out = df_out[var_sets['rs_meteo'][:-1]]
         cat.append('MODIS_LC')
 
     elif var_set == 'rs_meteo_yr':
-        df_out = df_out[['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'LST_Day', 'LST_Night', 'Lai', 
-                     'Fpar', 'CSIF-SIFdaily', 'CSIF-SIFinst', 'MODIS_LC', 'BESS-PAR', 'BESS-RSDN', 'BESS-PARdiff', 'ESACCI-sm', 'ET', 'total_precipitation', 'temperature_2m', 'vpd', 'prcp-lag3']]
+        df_out = df_out[var_sets['rs_meteo_yr']]
         df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
         cat.append('MODIS_LC')
 
     elif setting == 'model0':
         # Yanghui
-        df_out = df_out[['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
-                     'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
-                     'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC']]
+        df_out = df_out[var_sets['model0']]
 
     elif setting == 'model1':
         # Yanghui
-        df_out = df_out[['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
-                     'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
-                     'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC']]
+        df_out = df_out[var_sets['model1'][:-1]]
 
         df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
 
     elif setting == 'model2':
         # Yanghui
-        df_out = df_out[['BESS-PAR','BESS-PARdiff','BESS-RSDN','PET','Ts','Tmean','prcp','vpd','prcp-lag3','ESACCI-sm','ET',
-                     'b1','b2','b3','b4','b5','b6','b7','EVI','NDVI','GCI','NDWI','NIRv','kNDVI','CSIF-SIFdaily',
-                     'Percent_Snow','Fpar','Lai','LST_Day','LST_Night', 'MODIS_LC', 'CO2_concentration']]
+        df_out = df_out[var_sets['model2'][:-1]]
 
         df_out.loc[:, 'year'] = df_out.index.get_level_values('Date').year.values
 

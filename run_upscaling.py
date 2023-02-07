@@ -5,8 +5,6 @@
 #    3) Exp name
 #    4) Repetition
 
-## TODO: This needs a possibility to read the var set name and select the relevant columns, also in the right order!!
-
 import os
 import xarray as xr
 import pandas as pd
@@ -104,8 +102,18 @@ def preproc(ds, exclude_lc=[]):
     # rm unnecessary dimensions and variables
     ds = ds.squeeze(dim='time',drop=True)
     
+    # re-translate data vars to model vars
     if 'IGBP' in list(ds.keys()):
         ds = ds.rename({'IGBP': 'MODIS_LC'})
+
+    if 'BESS_PAR' in list(ds.keys()):
+        ds = ds.rename({'BESS_PAR': 'BESS-PAR'})
+
+    if 'BESS_PARdiff' in list(ds.keys()):
+        ds = ds.rename({'BESS_PARdiff': 'BESS-PARdiff'})
+
+    if 'BESS_RSDN' in list(ds.keys()):
+        ds = ds.rename({'BESS_RSDN': 'BESS-RSDN'})
     
     # convert to dask df
     ds = ds.to_dataframe()
@@ -158,7 +166,7 @@ def main():
         #'ERA5':['p1','p2'],
         'ESA_CCI':['ESACCI-sm'],
         'MCD12Q1':['IGBP'],
-        'MCD43C4v006':['b1','b2','b3','b4','b5','b6','b7'], #,'EVI','GCI','NDVI','NDWI','NIRv','kNDVI'
+        'MCD43C4v006':['b1','b2','b3','b4','b5','b6','b7', 'EVI','GCI','NDVI','NDWI','NIRv','kNDVI'],
         'MODIS_LAI':['Fpar','Lai'],
         'MODIS_LST':['LST_Day','LST_Night']
         }
@@ -193,6 +201,50 @@ def main():
 
     model = ModelWrapper.load(os.path.join(training_exp_path, 'fold_0'))
 
+    # select necessary variables from dataset dict
+    if len(getattr(model, 'vars', [])) == 0:
+        # this applies to old models where the var list is not saved
+        # get var list
+        model_vars = utils.var_sets[params['variable_set']]
+
+        # manuall add modis vars
+        model_vars_ohc = model_vars + ['MODIS_LC_BSV', 'MODIS_LC_CRO', 'MODIS_LC_CVM', 'MODIS_LC_DBF', 'MODIS_LC_EBF', 'MODIS_LC_ENF', 'MODIS_LC_GRA', 'MODIS_LC_MF', 'MODIS_LC_SAV', 'MODIS_LC_SH', 'MODIS_LC_URB', 'MODIS_LC_WAT', 'MODIS_LC_WET']
+        model_vars_ohc.remove('MODIS_LC')
+
+    else:
+        # this applies to models where var list is saved
+        model_vars_ohc = model.vars  
+
+    # create list with var names following the data files
+    data_vars = []
+
+    # delete OHC MODIS vars and add IGBP instead
+    data_vars_modis = False
+    for ii in model_vars_ohc:
+        if ii.startswith('MODIS_LC'):
+            if data_vars_modis == False:
+                data_vars.append('IGBP')
+                data_vars_modis = True
+            else:
+                continue
+
+        elif ii == 'BESS-PAR':
+            data_vars.append('BESS_PAR')
+
+        elif ii == 'BESS-PARdiff':
+            data_vars.append('BESS_PARdiff')
+
+        elif ii == 'BESS-RSDN':
+            data_vars.append('BESS_RSDN')
+
+        else:
+            data_vars.append(ii)
+
+    # adjust dataset dict to variables needed
+    dataset_dict_select = {}
+    for key, values in dataset_dict.items():
+        dataset_dict_select[key] = [value for value in values if value in data_vars]      
+
     for month in range(1, 13):
         print('Month', month)
 
@@ -203,7 +255,16 @@ def main():
 
         date = pd.to_datetime(ds['time'][0].to_numpy())
 
-        ds = preproc(ds, exclude_lc=['WAT'])
+        ds = preproc(ds) #, exclude_lc=['WAT']
+
+        # if a MODIS column is not present in data, add col of zeros
+        for col in list(set([i for i in model_vars_ohc if i.startswith('MODIS_LC_')]) - set(ds.columns)):
+            ds[col] = 0
+
+        ## consider year if necessary
+
+        # make sure columns are in the right order (model vars)
+        ds = ds[model_vars_ohc]
 
         # predict
         idx = ds.index
@@ -211,9 +272,10 @@ def main():
         #y_pred = predict(ds, model)
         print(list(ds.columns))
         y_pred = model.predict(ds)
-        y_pred.index = idx
+        y_pred = pd.DataFrame(y_pred, index=idx, columns=['predict'])
         y_pred['time'] = date
         y_pred = y_pred.set_index('time', append=True)
+        print(y_pred)
 
         # create xarray
         y_pred = y_pred.to_xarray()
