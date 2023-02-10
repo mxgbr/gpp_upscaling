@@ -44,5 +44,6 @@ class AutoSklearn(BaseModel):
         print('Fitting done')
         
     def predict(self, X):
+        X = super().predict(X)
         return self.model.predict(X)
             
