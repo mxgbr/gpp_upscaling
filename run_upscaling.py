@@ -249,13 +249,13 @@ def main():
         print('Month', month)
 
         if debug == False:     
-            ds = load_ds(year, month, dataset_dict)
+            ds = load_ds(year, month, dataset_dict_select)
         else:
             ds = load_ds_test()
 
         date = pd.to_datetime(ds['time'][0].to_numpy())
 
-        ds = preproc(ds) #, exclude_lc=['WAT']
+        ds = preproc(ds, exclude_lc=['WAT'])
 
         # if a MODIS column is not present in data, add col of zeros
         for col in list(set([i for i in model_vars_ohc if i.startswith('MODIS_LC_')]) - set(ds.columns)):
