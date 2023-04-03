@@ -79,9 +79,11 @@ def read_dask(path, date_range, pred_ids, variables=['GPP'], dims=('lat', 'lon',
         sets = []
         for date in rrule.rrule(rule, dtstart=date_start, until=date_end + timedelta(days=-1)):
             try:
-                sets.append(xr.open_dataset(path.format(**date_kwargs(date), **model_kwargs(model_id)), engine=engine, chunks='auto'))
+                ds = xr.open_dataset(path.format(**date_kwargs(date), **model_kwargs(model_id)), engine=engine, chunks='auto')
             except:
                 warnings.warn('Could not read ' + str(path.format(**date_kwargs(date), **model_kwargs(model_id))))
+            else:
+                sets.append(ds)
 
         sets_model.append(xr.concat(sets, dim=dims[2])[variables])
 
@@ -89,7 +91,8 @@ def read_dask(path, date_range, pred_ids, variables=['GPP'], dims=('lat', 'lon',
         ds = xr.concat(sets_model, dim='rep')
 
     # rename dimensions
-    ds = ds.rename({dims[0]: 'lat', dims[1]: 'lon', dims[2]: 'time'})
+    #ds = ds.rename({dims[0]: 'lat', dims[1]: 'lon', dims[2]: 'time'})
+    ds = ds.rename({'y': 'lat', 'x': 'lon'})
 
     print(ds)
     print('Range:')
@@ -189,7 +192,7 @@ def mask(ds, lsmask=True, vegmask=False, sea_val=0, noveg_val=0, set_invalid_0=F
 
     return ds
 
-def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, extend='neither', pickle_fig=True, rasterized=True, dataset=True):
+def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, extend='neither', pickle_fig=True, rasterized=True, dataset=True, title=''):
     '''Creates and saves a map
 
     Args:
@@ -203,7 +206,7 @@ def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, ext
         pickle_fig (bool): Indicator if fig should be pickled additionally
     '''
     if dataset:
-        xds = xds.to_array().squeeze().transpose()
+        xds = xds.to_array().squeeze()#.transpose()
 
     fig = plt.figure(figsize=(9, 7))
     crs = ccrs.PlateCarree()
@@ -218,7 +221,7 @@ def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, ext
     cbar = fig.colorbar(plt_im, location='bottom',fraction=0.04, pad=0.045, extend=extend)
     cbar.set_label(label)
 
-    plt.title('')
+    plt.title(title)
     plt.tight_layout()
     if pickle_fig == True:
         pickle.dump(fig, open(out_path + '.pkl', 'wb'))
@@ -297,8 +300,8 @@ def map_trend(xds):
 
     return coefs
 
-def map_annomalies(xds):
-    '''Calculates annomalies
+def map_anomalies(xds):
+    '''Calculates anomalies
 
     Args:
         xds (xr.DataSet): Dataset with time dimension
@@ -309,6 +312,7 @@ def map_annomalies(xds):
     # calc mean ts
     iav = xds.mean(dim='rep')
 
+    # subtract from month-mean, then calc std over entire ts
     iav = iav.groupby('time.month') - iav.groupby('time.month').mean(dim='time')
     iav_std = iav.std(dim='time')
     
@@ -364,42 +368,47 @@ if __name__ == '__main__':
     def dask_mean(data):
         data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         xds_mean = map_mean(data)
-        create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap=analysis.cmap_gpp_1, label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=10, extend='max')
+        create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap=analysis.cmap_gpp_1, label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=10, extend='max', title='Mean')
 
     def dask_trend(data):
         data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         xds_trend = map_trend(data)
-        create_map(xds_trend, os.path.join(out_path, 'trend.pdf'), label='GPP [$gC m^{-2} y^{-1}$]', vmin=-20, vmax=20, extend='both', cmap=analysis.cmap_gpp_2)
+        create_map(xds_trend, os.path.join(out_path, 'trend.pdf'), label='GPP [$gC m^{-2} y^{-1}$]', vmin=-20, vmax=20, extend='both', cmap=analysis.cmap_gpp_2, pickle_fig=False, title='Trend')
 
     def dask_msc(data):
         data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         msc_amp = map_msc(data)
-        create_map(msc_amp, os.path.join(out_path, 'msc.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=6, extend='max', cmap=analysis.cmap_gpp_1)
+        create_map(msc_amp, os.path.join(out_path, 'msc.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=6, extend='max', cmap=analysis.cmap_gpp_1, title='Seasonality')
 
-    def dask_annomalies(data):
+    def dask_anomalies(data):
         data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
-        annomalies = map_annomalies(data)
-        create_map(annomalies, os.path.join(out_path, 'annomalies.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=1.5, extend='max', cmap=analysis.cmap_gpp_1)
+        anomalies = map_anomalies(data)
+        create_map(anomalies, os.path.join(out_path, 'anomalies.pdf'), label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=1.5, extend='max', cmap=analysis.cmap_gpp_1, title='Anomalies')
 
     def dask_err_abs(data):
+        data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         std_err = map_err(data, abs=True)
-        create_map(std_err, os.path.join(out_path, 'std_err_abs.pdf'), label='Standard Error [$gC m^{-2} d^{-1}$]', vmin=0, vmax=0.7, extend='max', cmap=analysis.cmap_gpp_3)
+        create_map(std_err, os.path.join(out_path, 'std_err_abs.pdf'), label='Standard Error [$gC m^{-2} d^{-1}$]', vmin=0, vmax=0.1, extend='max', cmap=analysis.cmap_gpp_3, title='Standard Error')
 
     def dask_err(data):
+        data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         std_err = map_err(data, abs=False)
-        create_map(std_err, os.path.join(out_path, 'std_err.pdf'), label='Standard Error [%]', vmin=0, vmax=30, extend='max', cmap=analysis.cmap_gpp_3)
+        create_map(std_err, os.path.join(out_path, 'std_err.pdf'), label='Standard Error [%]', vmin=0, vmax=15, extend='max', cmap=analysis.cmap_gpp_3, title='Relative Standard Error')
 
 
     # run computation
     #delayed_objs = [
         #dask.delayed(dask_mean)(data),
         #dask.delayed(dask_msc)(data),
-        #dask.delayed(dask_annomalies)(data),
+        #dask.delayed(dask_anomalies)(data),
         #dask.delayed(dask_trend)(data),
         #dask.delayed(dask_err)(data)
     #]
 
-    dask_err(data)
+    #dask_err(data)
+    dask_err_abs(data)
+    #dask_mean(data)
+    #dask_msc(data)
 
     #[x.compute() for x in delayed_objs]
         
