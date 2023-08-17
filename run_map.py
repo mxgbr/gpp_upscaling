@@ -99,7 +99,7 @@ def read_dask(path, date_range, pred_ids, variables=['GPP'], dims=('lat', 'lon',
     print(date_range)
 
     # sel time range
-    # TODO disabled, does not work well withc chunking
+    # TODO disabled, does not work well with chunking
     ds = ds.sel(time=slice(*date_range))
 
     print(ds)
@@ -366,14 +366,15 @@ if __name__ == '__main__':
         os.makedirs(out_path)
 
     def dask_mean(data):
-        data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
+        ## default: lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan
+        data = mask(data, lsmask=False, vegmask=False)
         xds_mean = map_mean(data)
-        create_map(xds_mean, os.path.join(out_path, 'mean.pdf'), cmap=analysis.cmap_gpp_1, label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=10, extend='max', title='Mean')
+        create_map(xds_mean, os.path.join(out_path, 'mean_nomask.pdf'), cmap=analysis.cmap_gpp_1, label='GPP [$gC m^{-2} d^{-1}$]', vmin=0, vmax=10, extend='max', title='Mean')
 
     def dask_trend(data):
         data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
         xds_trend = map_trend(data)
-        create_map(xds_trend, os.path.join(out_path, 'trend.pdf'), label='GPP [$gC m^{-2} y^{-1}$]', vmin=-20, vmax=20, extend='both', cmap=analysis.cmap_gpp_2, pickle_fig=False, title='Trend')
+        create_map(xds_trend, os.path.join(out_path, 'trend.pdf'), label='GPP [$gC m^{-2} y^{-2}$]', vmin=-20, vmax=20, extend='both', cmap=analysis.cmap_gpp_2, pickle_fig=False, title='Trend')
 
     def dask_msc(data):
         data = mask(data, lsmask=True, vegmask=True, sea_val=np.nan, noveg_val=np.nan)
@@ -404,12 +405,11 @@ if __name__ == '__main__':
         #dask.delayed(dask_trend)(data),
         #dask.delayed(dask_err)(data)
     #]
-
-    #dask_err(data)
-    dask_err_abs(data)
-    #dask_mean(data)
-    #dask_msc(data)
-
     #[x.compute() for x in delayed_objs]
+
+    dask_err(data)
+    dask_err_abs(data)
+    dask_mean(data)
+    dask_msc(data)
         
     print('PYTHON DONE')
