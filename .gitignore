@@ -9,3 +9,5 @@ __pycache__/
 tmp/
 predictions/
 dask-worker-space/
+misc/
+*.pdf
