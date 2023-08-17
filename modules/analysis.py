@@ -128,7 +128,7 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, ylims=[], **kwar
             ax.set_ylim(*ylims[0])
 
     ax.set_ylabel('$r^2$')
-    ax.set_title('Overall')
+    ax.set_title('Total')
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, 'benchmark_r2_overall.pdf'))
 
@@ -136,13 +136,21 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, ylims=[], **kwar
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_trend', ax=ax[0,0], inner="quartile", **kwargs)
     #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_trend', dodge=True, palette='dark:black', ax=ax[0,0], legend=False)
 
+    handles = ax[0, 0].legend_.legendHandles
+    ## get labels here
+    labels = [x.get_text() for x in ax[0, 0].legend_.get_texts()]
+    ax[0, 0].legend_.remove()
+
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_sites', ax=ax[0,1], inner="quartile", **kwargs)
+    ax[0, 1].legend_.remove()
     #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_sites', dodge=True, palette='dark:black', ax=ax[0,1], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_msc', ax=ax[1,0], inner="quartile", **kwargs)
+    ax[1, 0].legend_.remove()
     #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_msc', dodge=True, palette='dark:black', ax=ax[1,0], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_anomalies', ax=ax[1,1], inner="quartile", **kwargs)
+    ax[1, 1].legend_.remove()
     #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', dodge=True, palette='dark:black', ax=ax[1,1], legend=False)
 
     if len(ylims) > 1:
@@ -151,15 +159,19 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, ylims=[], **kwar
                 ax_item.set_ylim(*ylims[idx+1])
 
     ax[0, 0].set_title('Trend')
-    ax[0, 1].set_title('Across-site Variability')
-    ax[1, 0].set_title('Mean Seasonal Cycle')
+    ax[0, 1].set_title('Across-site variability')
+    ax[1, 0].set_title('Seasonality')
     ax[1, 1].set_title('Anomalies')
 
     ax[0, 0].set_ylabel('$r^2$')
     ax[1, 0].set_ylabel('$r^2$')
     ax[0, 1].set_ylabel('$r^2$')
     ax[1, 1].set_ylabel('$r^2$')
-    plt.tight_layout()
+
+    fig.legend(handles, labels, loc="center right", title='Explanatory variable set')
+    fig.subplots_adjust(right=0.85, wspace=0.18, hspace=0.2)
+
+    #plt.tight_layout()
     plt.savefig(os.path.join(out_dir, 'benchmark_r2_decomp.pdf'))
 
 def eval_lc(exp_id, exp_dir, site_df, out_path=None, min_months=0):
@@ -287,8 +299,8 @@ def plt_lc_meanbox(data, out_dir, lc, exp, **kwargs):
     ax[1].set_ylim(-10, 1.5)
     ax[2].set_ylim(-3, 1.5)
 
-    ax[0].set_title('Overall')
-    ax[1].set_title('Mean Seasonal Cycle')
+    ax[0].set_title('Total')
+    ax[1].set_title('Seasonality')
     ax[2].set_title('Anomalies')
 
     ax[0].set_ylabel('$r^2$')
@@ -413,12 +425,20 @@ def msc(ts, transform=False, no_mean=False):
 
 def lr_model(series_inp, return_coef=False):
     series = series_inp.droplevel(0)
+    # could be improved by doing the regression over days, not months
+
+    # get monthly scale
     x = ((series.index - pd.to_datetime(date(1970, 1, 31))) / np.timedelta64(1, 'M')).values.round().reshape(-1, 1)
+
+    # aggregate per month
+    y = series * series.index.daysinmonth
     y = series.values
     lr = LinearRegression()
+
+    # returns gC m-2 (month)-2
     lr.fit(x, y)
     if return_coef == True:
-            return lr.coef_
+            return lr.coef_[0]
     return pd.Series(lr.predict(x), index=series_inp.index)
 
 def trend(ts):
@@ -446,4 +466,5 @@ def across_site_trend(ts):
         pd.Series with trend-only values
     '''
     grp = ts.groupby('SITE_ID').apply(lr_model, return_coef=True)
-    return pd.Series(np.concatenate(grp.values).ravel(), index=grp.index)
+    return grp
+    #return pd.Series(np.concatenate(grp.values).ravel(), index=grp.index)
