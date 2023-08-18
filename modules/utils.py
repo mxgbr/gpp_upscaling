@@ -1,17 +1,11 @@
-#from random import random
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
 
-import sklearn
 import sys
 import os
 import datetime as dt
-import pickle
 import glob
-import copy
-from collections import Counter, defaultdict
-import random
 
 PFT_REPLACEMENTS = pd.DataFrame({
     'MODIS': np.arange(1, 18),
@@ -325,7 +319,7 @@ class Experiment(object):
 
     def remove(self):
         '''Removes experiment'''
-        pass
+        raise NotImplementedError
 
     def log(self, msg):
         '''Logs message
@@ -333,4 +327,4 @@ class Experiment(object):
         Args:
             msg (str): Message
         '''
-        pass
+        raise NotImplementedError

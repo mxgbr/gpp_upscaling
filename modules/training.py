@@ -144,7 +144,6 @@ class Trainer(object):
 
         # save
         return_dict = {
-            #'id': idx,
             'model': predictor,
             'train_idx': train_idx,
             'test_idx': test_idx,
@@ -180,9 +179,6 @@ class CV(Trainer):
             futures: List of fit_predict futures
             X (pd.DataFrame): Data frame with variables as columns, without target variables 
             y (pd.Series): Target variable
-
-        TODO:
-            target variable in X?
         '''
         df, strat = self.model.preproc(df, y_col, strat)
 
@@ -250,4 +246,4 @@ class Bootstrap(Trainer):
 
     def run_repeated(self):
         '''Performs repeated bootstraps'''
-        pass
+        raise NotImplementedError

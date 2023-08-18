@@ -65,6 +65,7 @@ def eval_metrics(exp_id, exp_dir='experiments/', out_path=None, min_months=0):
         exp_id (int): Experiment ID
         exp_dir (str): Directory of experiments
         out_path (str): Saving directory
+        min_months (int): Minimum months for site to be included in analysis
 
     Returns:
         Dataframe with repetitions as rows and metrics as columns
@@ -119,9 +120,9 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, ylims=[], **kwar
         model (str): Name of model column
         metric (str): Name of metric column
         ylims (list): List of tuples for y limits (ymin, ymax), set none if auto
+        **kwargs: Arguments for seaborn
     '''
     ax = sns.violinplot(data=data, hue=var_set, x=model, y=metric, showfliers=True, inner="quartile", **kwargs)
-    #sns.swarmplot(data=data, hue=var_set, x=model, y=metric, dodge=True, palette='dark:black', legend=False)
 
     if len(ylims) > 0:
         if ylims[0] is not None:
@@ -134,25 +135,20 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, ylims=[], **kwar
 
     fig, ax = plt.subplots(2, 2, figsize=(18, 12))
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_trend', ax=ax[0,0], inner="quartile", **kwargs)
-    #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_trend', dodge=True, palette='dark:black', ax=ax[0,0], legend=False)
-
+    
     handles = ax[0, 0].legend_.legendHandles
-    ## get labels here
     labels = [x.get_text() for x in ax[0, 0].legend_.get_texts()]
     ax[0, 0].legend_.remove()
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_sites', ax=ax[0,1], inner="quartile", **kwargs)
     ax[0, 1].legend_.remove()
-    #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_sites', dodge=True, palette='dark:black', ax=ax[0,1], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_msc', ax=ax[1,0], inner="quartile", **kwargs)
     ax[1, 0].legend_.remove()
-    #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_msc', dodge=True, palette='dark:black', ax=ax[1,0], legend=False)
 
     sns.violinplot(data=data, hue=var_set, x=model, y='r2_anomalies', ax=ax[1,1], inner="quartile", **kwargs)
     ax[1, 1].legend_.remove()
-    #sns.swarmplot(data=data, hue=var_set, x=model, y='r2_anomalies', dodge=True, palette='dark:black', ax=ax[1,1], legend=False)
-
+ 
     if len(ylims) > 1:
         for idx, ax_item in enumerate(ax.flatten()):
             if ylims[idx+1] is not None:
@@ -171,7 +167,6 @@ def plt_model_comparison(data, out_dir, var_set, model, metric, ylims=[], **kwar
     fig.legend(handles, labels, loc="center right", title='Explanatory variable set')
     fig.subplots_adjust(right=0.85, wspace=0.18, hspace=0.2)
 
-    #plt.tight_layout()
     plt.savefig(os.path.join(out_dir, 'benchmark_r2_decomp.pdf'))
 
 def eval_lc(exp_id, exp_dir, site_df, out_path=None, min_months=0):
@@ -182,6 +177,7 @@ def eval_lc(exp_id, exp_dir, site_df, out_path=None, min_months=0):
         exp_dir (str): Directory of experiments
         site_df (pd.DataFrame): Frame including IGBP and koppen_main columns with SITE_ID as index
         out_path (str): Saving directory
+        min_months (int): Minimum months for site to be included in analysis
 
     Returns:
         Dataframe with repetitions as rows and metrics as columns
@@ -229,7 +225,6 @@ def plt_lc_violin(data, out_dir, lc, exp, **kwargs):
         out_dir (str): Path to output directory
         lc (str): Name of lc column
         exp (str): Name of experiment repetition id
-        metric (str): Name of metric column
         **kwargs: Arguments for seaborn
     '''
     fig, ax = plt.subplots(3, 1, figsize=(9, 12), sharex=True)
@@ -280,7 +275,6 @@ def plt_lc_meanbox(data, out_dir, lc, exp, **kwargs):
         out_dir (str): Path to output directory
         lc (str): Name of lc column
         exp (str): Name of experiment repetition id
-        metric (str): Name of metric column
         **kwargs: Arguments for seaborn
     '''
     fig, ax = plt.subplots(3, 1, figsize=(9, 12), sharex=True)
@@ -309,97 +303,7 @@ def plt_lc_meanbox(data, out_dir, lc, exp, **kwargs):
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, 'benchmark_r2_lc_box.pdf'))
 
-def evaluation_plot(y_eval):
-    '''
-    Creates evaluation plots for model performance
-
-    Args:
-        y_eval (pd.DataFrame): DataFrame with ground truth values in `GT` column and predictions in `Pred` column. Index must consist of SITE_ID and Date (datetimeindex)
-    '''
-    r2_overall = sklearn.metrics.r2_score(y_eval.GT.values, y_eval.Pred.values)
-    r2_trend = sklearn.metrics.r2_score(across_site_trend(y_eval.GT).values, across_site_trend(y_eval.Pred).values)
-    # r2_seasonal = sklearn.metrics.r2_score(seasonal_cycle_mean(y_eval.GT).values, seasonal_cycle_mean(y_eval.Pred).values)
-    r2_anomalies = sklearn.metrics.r2_score(iav(y_eval.GT, detrend=True).values, iav(y_eval.Pred, detrend=True).values)
-    r2_sites = sklearn.metrics.r2_score(across_site_variability(y_eval.GT).values, across_site_variability(y_eval.Pred).values)
-    r2_iav = sklearn.metrics.r2_score(iav(y_eval.GT).values, iav(y_eval.Pred).values)
-    r2_msc = sklearn.metrics.r2_score(msc(y_eval.GT).values, msc(y_eval.Pred).values)
-
-    rmse_overall = sklearn.metrics.mean_squared_error(y_eval.GT.values, y_eval.Pred.values, squared=False)
-    rmse_trend = sklearn.metrics.mean_squared_error(across_site_trend(y_eval.GT).values, across_site_trend(y_eval.Pred).values, squared=False)
-    # rmse_seasonal = sklearn.metrics.mean_squared_error(seasonal_cycle_mean(y_eval.GT).values, seasonal_cycle_mean(y_eval.Pred).values, squared=False)
-    rmse_anomalies = sklearn.metrics.mean_squared_error(iav(y_eval.GT, detrend=True).values, iav(y_eval.Pred).values, squared=False)
-    rmse_sites = sklearn.metrics.mean_squared_error(across_site_variability(y_eval.GT).values, across_site_variability(y_eval.Pred).values, squared=False)
-    rmse_iav = sklearn.metrics.mean_squared_error(iav(y_eval.GT).values, iav(y_eval.Pred).values, squared=False)
-    rmse_msc = sklearn.metrics.mean_squared_error(msc(y_eval.GT).values, msc(y_eval.Pred).values, squared=False)
-
-    fig, ax = plt.subplots(2, 3, figsize=(12, 8))
-
-    # plot 1
-    x = y_eval.Pred
-    y = y_eval.GT
-    r2_plot(x, y, ax[0, 0], r2=r2_overall, rmse=rmse_overall)
-    ax[0, 0].set_xlabel('Predicted GPP [$gC m^{-2} d^{-1}$]')
-    ax[0, 0].set_ylabel('FLUXNET GPP [$gC m^{-2} d^{-1}$]')
-    ax[0, 0].set_title('Overall prediction')
-
-    # plot 2
-    x = across_site_trend(y_eval.Pred)
-    y = across_site_trend(y_eval.GT)
-    r2_plot(x, y, ax[0, 1], r2=r2_trend, rmse=rmse_trend)
-    ax[0, 1].set_xlabel('Predicted slope GPP [$gC m^{-2} d^{-1} month^{-1}$]')
-    ax[0, 1].set_ylabel('FLUXNET slope GPP [$gC m^{-2} d^{-1} month^{-1}$]')
-    ax[0, 1].set_title('Trend')
-
-    # plot 3
-    # x = seasonal_cycle_mean(y_eval.Pred)
-    # y = seasonal_cycle_mean(y_eval.GT)
-    # r2_plot(x, y, ax[0, 1], r2=r2_seasonal, rmse=rmse_seasonal)
-    # ax[0, 1].set_xlabel('Predicted GPP [$gC m^{-2} d^{-1}$]')
-    # ax[0, 1].set_ylabel('FLUXNET GPP [$gC m^{-2} d^{-1}$]')
-    # ax[0, 1].set_title('Seasonal cycle')
-
-    # plot 5
-    x = across_site_variability(y_eval.Pred)
-    y = across_site_variability(y_eval.GT)
-    r2_plot(x, y, ax[0, 2], r2=r2_sites, rmse=rmse_sites)
-    ax[0, 2].set_xlabel('Predicted GPP [$gC m^{-2} d^{-1}$]')
-    ax[0, 2].set_ylabel('FLUXNET GPP [$gC m^{-2} d^{-1}$]')
-    ax[0, 2].set_title('Across-site variability')
-
-    # plot 7
-    x = msc(y_eval.Pred)
-    y = msc(y_eval.GT)
-    im = r2_plot(x, y, ax[1, 0], r2=r2_msc, rmse=rmse_msc)
-    ax[1, 0].set_xlabel('Predicted GPP [$gC m^{-2} d^{-1}$]')
-    ax[1, 0].set_ylabel('FLUXNET GPP [$gC m^{-2} d^{-1}$]')
-    ax[1, 0].set_title('Mean seasonal cycle')
-
-    # plot 6
-    x = iav(y_eval.Pred)
-    y = iav(y_eval.GT)
-    r2_plot(x, y, ax[1, 1], r2=r2_iav, rmse=rmse_iav)
-    ax[1, 1].set_xlabel('Predicted GPP [$gC m^{-2} d^{-1}$]')
-    ax[1, 1].set_ylabel('FLUXNET GPP [$gC m^{-2} d^{-1}$]')
-    ax[1, 1].set_title('Interanual variability')
-
-    # plot 4
-    x = iav(y_eval.Pred, detrend=True)
-    y = iav(y_eval.GT, detrend=True)
-    r2_plot(x, y, ax[1, 2], r2=r2_anomalies, rmse=rmse_anomalies)
-    ax[1, 2].set_xlabel('Predicted GPP [$gC m^{-2} d^{-1}$]')
-    ax[1, 2].set_ylabel('FLUXNET GPP [$gC m^{-2} d^{-1}$]')
-    ax[1, 2].set_title('Interannual variability (detrended)')
-
-    # ax_cbar = fig.add_axes([0.3, 0.1, 0.4, 0.03])
-    # plt.colorbar(im, cax=ax_cbar, orientation='horizontal')
-
-    plt.tight_layout()
-    fig = plt.gcf()
-    plt.show()
-    return fig
-
 def annual_mean(ts, transform=False):
-    '''Calculates annual mean values'''
     grp = ts.groupby(['SITE_ID', ts.index.get_level_values('Date').year])
     if transform:
         return grp.transform('mean')
@@ -412,7 +316,6 @@ def iav(ts, detrend=False):
     ts = ts.sub(msc(ts, transform=True))
     if detrend == True:
         ts = ts.sub(trend(ts))
-
     return ts
 
 def msc(ts, transform=False, no_mean=False):
@@ -425,7 +328,6 @@ def msc(ts, transform=False, no_mean=False):
 
 def lr_model(series_inp, return_coef=False):
     series = series_inp.droplevel(0)
-    # could be improved by doing the regression over days, not months
 
     # get monthly scale
     x = ((series.index - pd.to_datetime(date(1970, 1, 31))) / np.timedelta64(1, 'M')).values.round().reshape(-1, 1)
@@ -467,4 +369,3 @@ def across_site_trend(ts):
     '''
     grp = ts.groupby('SITE_ID').apply(lr_model, return_coef=True)
     return grp
-    #return pd.Series(np.concatenate(grp.values).ravel(), index=grp.index)
