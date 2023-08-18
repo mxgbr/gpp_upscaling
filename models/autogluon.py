@@ -15,16 +15,14 @@ class AutoGluon(BaseModel):
     
     def fit(self, X, y, oof_idx=None):
 
+        # create random id for temp files stored by the package
         ## TODO not ideal, but necessary as path would be the same in parallel computation
-        # could there be an error as id is an attribute, but model specific?
 
         self.id = np.random.RandomState().randint(0, 1e6)
         self.model = TabularPredictor(label=self.label, groups='groups', eval_metric=self.scoring, path='tmp/AutogluonModels/ag-' + str(self.id))
 
         train = X.copy()
         train[self.label] = y
-        #if self.groups is not None:
-            ## TODO originally oof_idx, but makes more sense to just have SITE_ID as group
         train['groups'] = train.index.get_level_values(0).values
 
         self.model.fit(train, 

@@ -72,7 +72,7 @@ class BaseModel(object):
         '''Saves the model
 
         Pickles by default, should be overwritten if custom saving methods applied
-        Old implementation, use save_ if possible
+        Old implementation, use save_ if possible.
 
         Args:
             path (str): Saving directory
@@ -85,7 +85,7 @@ class BaseModel(object):
         '''Loads a model
 
         Model loaded is of type BaseModel with default attributes and the loaded model in the model attribute
-        Old implementation
+        Old implementation, use load_ if possible.
 
         Args:
             path (str): Loading directory

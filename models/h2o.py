@@ -2,7 +2,6 @@ from models.basemodel import BaseModel
 import h2o
 from h2o.automl import H2OAutoML
 import os
-import re
 import glob
 import numpy as np
 

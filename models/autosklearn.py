@@ -19,8 +19,7 @@ class AutoSklearn(BaseModel):
         if scoring == 'mean_squared_error':
             self.scoring = autosklearn.metrics.mean_squared_error
         else:
-            ## TODO: raise error
-            pass
+            raise ValueError('Scoring method not available.')
 
         self.n_cpus = n_cpus
         self.memory_limit = memory_limit
