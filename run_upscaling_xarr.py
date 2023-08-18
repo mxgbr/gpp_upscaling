@@ -12,12 +12,6 @@ import numpy as np
 from pandas.tseries.offsets import MonthEnd
 import sys
 import modules.utils as utils
-import sklearn
-import glob
-import dask.dataframe
-import dask.array as da
-import zarr
-#from dask_ml.preprocessing import DummyEncoder
 
 debug = False
 
@@ -25,9 +19,6 @@ pft_replacements = dict(zip(
     [-1] + np.arange(1, 18),
     ['NAN', 'ENF', 'EBF', 'DNF', 'DBF', 'MF', 'SH', 'SH', 'SAV', 'SAV', 'GRA', 'WET', 'CRO', 'URB', 'CVM', 'SNO', 'BSV', 'WAT']   
 ))
-
-#categorical_dtype = pd.CategoricalDtype(categories=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, -1],
-#                                        ordered=False)
 
 # without SNO and NAN, since they're excluded from the prediction
 categorical_dtype = pd.CategoricalDtype(categories=['ENF', 'EBF', 'DBF', 'DNF', 'MF', 'SH', 'SAV', 'GRA', 'WET', 'CRO', 'URB', 'CVM', 'BSV', 'WAT'],
@@ -108,8 +99,6 @@ def main():
         'MODIS_LAI':['Fpar','Lai'],
         'MODIS_LST':['LST_Day','LST_Night']
         }
-
-    categoricals = ['MODIS_LC']
 
     year = int(sys.argv[1])
     slurm_id = str(sys.argv[2])
@@ -203,7 +192,6 @@ def main():
     data_xarr = data_xarr.isel(x=slice(0, None, 5), y=slice(0, None, 5))
 
     ## does not increase speed, but should reduce mem
-    #data_xarr = data_xarr.assign_coords({'x': data_xarr['x'].astype('float32'), 'y': data_xarr['y'].astype('float32'), 'time': data_xarr.time.dt.month.astype('int32')})
     data_xarr = data_xarr.assign_coords({'x': data_xarr['x'].astype('float32'), 'y': data_xarr['y'].astype('float32')})
 
     print(data_xarr)
@@ -217,8 +205,6 @@ def main():
 
     # apply predict function to each chunk
     def process_chunk(chunk):
-
-        ## benefits of having that in dask instead?
 
         # convert to pandas
         ds = chunk.to_dataframe()
@@ -259,9 +245,6 @@ def main():
     out_path = exp.path
     print(out_path)
     pred_xarr.to_zarr(out_path, mode='w', consolidated=True)
-
-    #task.compute()
-    #task.visualize(filename='misc/dask_graph.svg')
 
     exp.save(params=params)
 

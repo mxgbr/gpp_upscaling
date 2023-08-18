@@ -34,10 +34,10 @@ def read_dask(path, date_range, pred_ids, variables=['GPP'], dims=('lat', 'lon',
     Args:
         path (str): Path to file
         date_range (tuple): (start, end)
+        pred_ids (list): List of predictor IDs
         variables (list): Variable names in list of strings
         dims (tuple): Dimension names in tuple
         freq (str): Frequency string
-        pred_ids (list): List of predictor IDs
 
     Returns:
         xarray dataset with dimensions (lat, lon, time, rep)
@@ -91,7 +91,6 @@ def read_dask(path, date_range, pred_ids, variables=['GPP'], dims=('lat', 'lon',
         ds = xr.concat(sets_model, dim='rep')
 
     # rename dimensions
-    #ds = ds.rename({dims[0]: 'lat', dims[1]: 'lon', dims[2]: 'time'})
     ds = ds.rename({'y': 'lat', 'x': 'lon'})
 
     print(ds)
@@ -99,10 +98,7 @@ def read_dask(path, date_range, pred_ids, variables=['GPP'], dims=('lat', 'lon',
     print(date_range)
 
     # sel time range
-    # TODO disabled, does not work well with chunking
     ds = ds.sel(time=slice(*date_range))
-
-    print(ds)
 
     # resample
     ds = ds.resample(time=freq).mean(dim='time')
@@ -141,8 +137,8 @@ def mask(ds, lsmask=True, vegmask=False, sea_val=0, noveg_val=0, set_invalid_0=F
 
     Args:
         ds (xarray.Dataset): Dataset with spatial coordinates x, y
-        lsm (bool): Apply lsm
-        veg (bool): Apply veg
+        lsmask (bool): Apply lsm
+        vegmask (bool): Apply veg
         sea_val (float): Value for masked regions
         nonveg_val (float): Value for masked regions
         set_invalid_0 (bool): Use if dataset already contains masked regions
@@ -152,8 +148,6 @@ def mask(ds, lsmask=True, vegmask=False, sea_val=0, noveg_val=0, set_invalid_0=F
     Returns:
         xarray dataset
 
-    TODO:
-        implement veg mask
     '''
     lon = ds['lon']
     lat = ds['lat']
@@ -192,18 +186,20 @@ def mask(ds, lsmask=True, vegmask=False, sea_val=0, noveg_val=0, set_invalid_0=F
 
     return ds
 
-def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, extend='neither', pickle_fig=True, rasterized=True, dataset=True, title=''):
+def create_map(xds, out_path, cmap='Greens', label='', vmin=None, vmax=None, extend='neither', pickle_fig=True, dataset=True, title=''):
     '''Creates and saves a map
 
     Args:
         xds (xr.DataSet): Dataset with dimensions time, x, y
+        out_path (str): Path incl file name for saving the file
         cmap: Colormap
         label (str): Label
         vmin (float): Min value
         vmax (float): Max value
         extend (str): Extension arrow for colorbar
-        out_path (str): Path incl file name for saving the file
         pickle_fig (bool): Indicator if fig should be pickled additionally
+        dataset (bool): Set true if xds is a dataset
+        title (str): Figure title
     '''
     if dataset:
         xds = xds.to_array().squeeze()#.transpose()
@@ -295,7 +291,6 @@ def map_trend(xds):
                 )
 
     coefs = mask(coefs.sel(stat=0), lsmask=False, custom=(coefs.sel(stat=1) < 0.05))
-    #coefs.name = 'slope'
     print(coefs)
 
     return coefs
@@ -331,9 +326,6 @@ def map_err(xds, abs=True):
     std_err = xds.std(dim='rep') / (xds.count(dim='rep')**0.5)
     std_err = std_err.mean(dim='time')
 
-    ##variance = xds.var(dim='rep').mean(dim='time')
-    ##std = variance ** 0.5
-
     if abs == False:
         std_err = std_err * 100 / np.fabs(xds.mean(dim=['rep', 'time']))
 
@@ -347,10 +339,6 @@ if __name__ == '__main__':
     # end date (open interval)
     date_end = datetime.strptime(sys.argv[4], '%m-%Y')
     map_type = sys.argv[5]
-
-    # dask
-    #cluster = LocalCluster()
-    #client = Client(cluster)
 
     # 30 repetitions
     repetitions = range(0, 30)

@@ -1,15 +1,9 @@
 # This file contains code to compare our predictions to fluxcom and fluxsat
 
-from dask_ml.metrics import mean_squared_error
 import xarray as xr
-import sklearn
-from run_map import read_dask
 from datetime import datetime
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
-import dask.array as da
 import dask.dataframe as dd
 
 if __name__ == '__main__':
